@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>ลงทะเบียนรับประกันสินค้า</title>
+  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      max-width: 400px;
+      margin: 30px auto;
+      padding: 20px;
+      background-color: #f4f4f4;
+      border-radius: 10px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; color: #333; }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #06c755;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #04a849;
+    }
+    .error {
+      color: red;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>ลงทะเบียนรับประกันสินค้า</h2>
+
+  <form id="registerForm">
+    <input type="text" id="firstname" placeholder="ชื่อจริง" required />
+    <input type="text" id="lastname" placeholder="นามสกุล" required />
+    <input type="tel" id="phone" placeholder="เบอร์โทร (10 หลัก)" required pattern="0[0-9]{9}" />
+    <input type="email" id="email" placeholder="อีเมล" required />
+    <input type="text" id="orderId" placeholder="เลขคำสั่งซื้อ" required />
+
+    <h4>ที่อยู่:</h4>
+    <input type="text" id="addressLine" placeholder="บ้านเลขที่ / หมู่บ้าน" required />
+    <input type="text" id="subDistrict" placeholder="ตำบล / แขวง" required />
+    <input type="text" id="district" placeholder="อำเภอ / เขต" required />
+    <input type="text" id="province" placeholder="จังหวัด" required />
+    <input type="text" id="postcode" placeholder="รหัสไปรษณีย์" required pattern="[0-9]{5}" />
+
+    <button type="submit">ลงทะเบียน</button>
+    <p class="error" id="errorMsg"></p>
+  </form>
+
+  <script>
+    const apiBase = "https://your-server.onrender.com"; // ✅ เปลี่ยนเป็น URL จริงของคุณ
+    let userId = "";
+
+    async function getLiffId() {
+      try {
+        const res = await fetch(`${apiBase}/api/liff-id`);
+        const data = await res.json();
+        return data.liffId;
+      } catch (err) {
+        console.error("❌ ไม่สามารถโหลด LIFF ID:", err);
+        document.getElementById("errorMsg").innerText = "❌ ไม่สามารถโหลด LIFF ID";
+        return null;
+      }
+    }
+
+    async function initLIFF() {
+      const liffId = await getLiffId();
+      if (!liffId) return;
+
+      try {
+        await liff.init({ liffId });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+        } else {
+          const profile = await liff.getProfile();
+          userId = profile.userId;
+        }
+      } catch (err) {
+        document.getElementById("errorMsg").innerText = "❌ ไม่สามารถโหลด LIFF ได้";
+        console.error(err);
+      }
+    }
+
+    function sanitize(input) {
+      return input.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function isValidEmail(email) {
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return re.test(email);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      initLIFF();
+
+      document.getElementById("registerForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const errorMsg = document.getElementById("errorMsg");
+
+        const firstname = sanitize(document.getElementById("firstname").value.trim());
+        const lastname = sanitize(document.getElementById("lastname").value.trim());
+        const name = `${firstname} ${lastname}`;
+        const phone = document.getElementById("phone").value.trim();
+        const email = sanitize(document.getElementById("email").value.trim());
+        const orderId = sanitize(document.getElementById("orderId").value.trim());
+
+        const address = {
+          line: sanitize(document.getElementById("addressLine").value.trim()),
+          subDistrict: sanitize(document.getElementById("subDistrict").value.trim()),
+          district: sanitize(document.getElementById("district").value.trim()),
+          province: sanitize(document.getElementById("province").value.trim()),
+          postcode: sanitize(document.getElementById("postcode").value.trim()),
+        };
+
+        if (!/^0\d{9}$/.test(phone)) {
+          errorMsg.innerText = "📵 กรุณากรอกเบอร์โทร 10 หลักให้ถูกต้อง";
+          return;
+        }
+
+        if (!isValidEmail(email)) {
+          errorMsg.innerText = "📧 อีเมลไม่ถูกต้อง";
+          return;
+        }
+
+        const data = { userId, name, phone, email, orderId, address };
+
+        try {
+          const res = await fetch(`${apiBase}/api/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+
+          if (res.ok) {
+            alert("✅ ลงทะเบียนสำเร็จ");
+            liff.closeWindow();
+          } else {
+            const err = await res.json();
+            errorMsg.innerText = err.message || "❌ ไม่สามารถลงทะเบียนได้";
+          }
+        } catch (err) {
+          console.error("❌ Error:", err);
+          errorMsg.innerText = "⚠️ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์";
+        }
+      });
+    });
+  </script>
+</body>
+</html>

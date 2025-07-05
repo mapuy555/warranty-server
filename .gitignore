@@ -1,0 +1,5 @@
+# ไฟล์และโฟลเดอร์ที่ไม่ให้ Git ติดตาม
+node_modules/
+.env
+warranty-register-*.json
+.DS_Store
