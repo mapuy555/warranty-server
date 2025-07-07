@@ -1,20 +1,18 @@
-require("dotenv").config(); // ⬅️ ควรอยู่บรรทัดแรกเสมอ
+require("dotenv").config(); // ⬅️ ต้องอยู่บรรทัดแรกเสมอ
 
 const express = require("express");
 const bodyParser = require("body-parser");
 const admin = require("firebase-admin");
 const axios = require("axios");
-const cors = require("cors"); // ✅ หากต้องให้ frontend cross origin
+const cors = require("cors");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors()); // ✅ เปิด CORS หากมี frontend แยกโดเมน
+app.use(cors());
 app.use(bodyParser.json());
 
-
-
-// 🔐 Firebase Admin Init จาก Environment Variables
+// 🔐 Firebase Admin Init จาก Environment Variables (Base64)
 const serviceAccount = JSON.parse(
   Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, "base64").toString("utf8")
 );
@@ -22,7 +20,6 @@ const serviceAccount = JSON.parse(
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
-
 
 const db = admin.firestore();
 
@@ -62,10 +59,29 @@ function createFlexMessage(data, orderData) {
   };
 }
 
-
-// ✅ Endpoint: ส่ง LIFF ID ให้ฝั่ง client แบบปลอดภัย
+// ✅ Endpoint: ส่ง LIFF ID ให้หน้าเว็บ
 app.get("/api/liff-id", (req, res) => {
   res.json({ liffId: process.env.LIFF_ID });
+});
+
+// ✅ Endpoint: บันทึกโปรไฟล์ผู้ใช้จาก LINE (หลังจาก Allow)
+app.post("/api/user", async (req, res) => {
+  try {
+    const { userId, displayName, pictureUrl } = req.body;
+    if (!userId) return res.status(400).json({ message: "userId is required" });
+
+    await db.collection("users").doc(userId).set({
+      userId,
+      displayName,
+      pictureUrl,
+      lastSeen: admin.firestore.Timestamp.now()
+    }, { merge: true });
+
+    res.status(200).json({ message: "✅ บันทึกข้อมูลผู้ใช้เรียบร้อย" });
+  } catch (error) {
+    console.error("❌ Error saving user profile:", error);
+    res.status(500).json({ message: "ไม่สามารถบันทึกข้อมูลผู้ใช้ได้" });
+  }
 });
 
 // ✅ Endpoint: ลงทะเบียนสินค้า
@@ -82,6 +98,7 @@ app.post("/api/register", async (req, res) => {
     if (!orderDoc.exists) {
       return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
     }
+
     const orderData = orderDoc.data();
 
     const registeredAt = new Date();
@@ -132,5 +149,3 @@ app.post("/api/register", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
-
-

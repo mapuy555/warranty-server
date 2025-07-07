@@ -39,10 +39,17 @@
       font-size: 14px;
       margin-top: 10px;
     }
+    #lineName {
+      text-align: center;
+      font-size: 15px;
+      color: #555;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
   <h2>ลงทะเบียนรับประกันสินค้า</h2>
+  <p id="lineName">👤 กำลังโหลดข้อมูลผู้ใช้...</p>
 
   <form id="registerForm">
     <input type="text" id="firstname" placeholder="ชื่อจริง" required />
@@ -63,7 +70,7 @@
   </form>
 
   <script>
-    const apiBase = "https://warranty-api-umg2.onrender.com"; // ✅ เปลี่ยนเป็น URL จริงของคุณ
+    const apiBase = "https://warranty-api-umg2.onrender.com"; // ✅ เปลี่ยนตามของคุณ
     let userId = "";
 
     async function getLiffId() {
@@ -89,6 +96,18 @@
         } else {
           const profile = await liff.getProfile();
           userId = profile.userId;
+          document.getElementById("lineName").innerText = `👤 คุณ: ${profile.displayName}`;
+
+          // ⬇️ บันทึกข้อมูลผู้ใช้ไปยัง Firestore ผ่าน Server
+          await fetch(`${apiBase}/api/user`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: profile.userId,
+              displayName: profile.displayName,
+              pictureUrl: profile.pictureUrl
+            }),
+          });
         }
       } catch (err) {
         document.getElementById("errorMsg").innerText = "❌ ไม่สามารถโหลด LIFF ได้";
@@ -108,9 +127,13 @@
     document.addEventListener("DOMContentLoaded", () => {
       initLIFF();
 
-      document.getElementById("registerForm").addEventListener("submit", async (e) => {
+      const form = document.getElementById("registerForm");
+      const errorMsg = document.getElementById("errorMsg");
+      const button = form.querySelector("button");
+
+      form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const errorMsg = document.getElementById("errorMsg");
+        errorMsg.innerText = "";
 
         const firstname = sanitize(document.getElementById("firstname").value.trim());
         const lastname = sanitize(document.getElementById("lastname").value.trim());
@@ -140,6 +163,9 @@
         const data = { userId, name, phone, email, orderId, address };
 
         try {
+          button.disabled = true;
+          button.innerText = "⏳ กำลังส่ง...";
+
           const res = await fetch(`${apiBase}/api/register`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -153,9 +179,13 @@
             const err = await res.json();
             errorMsg.innerText = err.message || "❌ ไม่สามารถลงทะเบียนได้";
           }
+
         } catch (err) {
           console.error("❌ Error:", err);
           errorMsg.innerText = "⚠️ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์";
+        } finally {
+          button.disabled = false;
+          button.innerText = "ลงทะเบียน";
         }
       });
     });
