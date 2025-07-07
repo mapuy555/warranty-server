@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>ตรวจสอบข้อมูลลงทะเบียน</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      padding: 20px;
+      max-width: 400px;
+      margin: auto;
+      background: #f9f9f9;
+    }
+    .box {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h3 { margin-top: 0; }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 10px;
+      background: #06c755;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .error { color: red; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h3>📋 ตรวจสอบข้อมูลก่อนยืนยัน</h3>
+    <div id="summary">⏳ กำลังโหลดข้อมูล...</div>
+    <button id="confirmBtn">ยืนยันลงทะเบียน</button>
+    <p class="error" id="errorMsg"></p>
+  </div>
+
+  <script>
+    const apiBase = "https://warranty-api-umg2.onrender.com";
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get("orderId");
+    const name = urlParams.get("name");
+    const phone = urlParams.get("phone");
+    const email = urlParams.get("email");
+    const address = {
+      line: urlParams.get("line"),
+      subDistrict: urlParams.get("subDistrict"),
+      district: urlParams.get("district"),
+      province: urlParams.get("province"),
+      postcode: urlParams.get("postcode"),
+    };
+    let userId = "";
+
+    async function getOrderDetails(orderId) {
+      const res = await fetch(`${apiBase}/api/order/${orderId}`);
+      if (!res.ok) throw new Error("ไม่พบข้อมูลคำสั่งซื้อ");
+      return res.json();
+    }
+
+    async function initPage() {
+      document.getElementById("summary").innerText = "⏳ กำลังโหลดข้อมูล...";
+
+      try {
+        const liffIdRes = await fetch(`${apiBase}/api/liff-id`);
+        const { liffId } = await liffIdRes.json();
+        await liff.init({ liffId });
+
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+
+        const profile = await liff.getProfile();
+        userId = profile.userId;
+
+        const orderData = await getOrderDetails(orderId);
+        const html = `
+          <p>👤 ชื่อ: ${name}</p>
+          <p>📞 เบอร์: ${phone}</p>
+          <p>📧 อีเมล: ${email}</p>
+          <p>🧾 คำสั่งซื้อ: ${orderId}</p>
+          <p>📍 ที่อยู่: ${address.line}, ${address.subDistrict}, ${address.district}, ${address.province} ${address.postcode}</p>
+          <hr />
+          <p>📦 รายการสินค้า: ${orderData.productName}</p>
+          <p>🗓️ วันที่สั่งซื้อ: ${(new Date(orderData.purchaseDate._seconds * 1000)).toISOString().split("T")[0]}</p>
+        `;
+        document.getElementById("summary").innerHTML = html;
+
+        // Save to global
+        window.orderData = orderData;
+
+      } catch (err) {
+        console.error("❌", err);
+        document.getElementById("summary").innerHTML = "<span style='color:red;'>❌ ไม่สามารถโหลดข้อมูลได้</span>";
+      }
+    }
+
+    document.getElementById("confirmBtn").addEventListener("click", async () => {
+      const errorMsg = document.getElementById("errorMsg");
+      errorMsg.innerText = "";
+
+      const data = {
+        userId,
+        name,
+        phone,
+        email,
+        orderId,
+        address
+      };
+
+      try {
+        const res = await fetch(`${apiBase}/api/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        if (res.ok) {
+          alert("✅ ลงทะเบียนสำเร็จ");
+          liff.closeWindow();
+        } else {
+          const err = await res.json();
+          errorMsg.innerText = err.message || "❌ ไม่สามารถลงทะเบียนได้";
+        }
+      } catch (err) {
+        errorMsg.innerText = "⚠️ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์";
+      }
+    });
+
+    document.addEventListener("DOMContentLoaded", initPage);
+  </script>
+</body>
+</html>

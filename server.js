@@ -30,6 +30,15 @@ function calculateWarrantyUntil(days) {
   return today.toISOString().split("T")[0];
 }
 
+// ✅ Helper: แปลง Firestore Timestamp เป็น YYYY-MM-DD
+function formatDate(dateField) {
+  try {
+    return dateField.toDate().toISOString().split("T")[0];
+  } catch {
+    return "-";
+  }
+}
+
 // ✅ Helper: สร้าง Flex Message
 function createFlexMessage(data, orderData) {
   return {
@@ -52,7 +61,7 @@ function createFlexMessage(data, orderData) {
           { type: "text", text: `⏳ หมดประกัน: ${data.warrantyUntil}` },
           { type: "separator", margin: "md" },
           { type: "text", text: `📦 รายการสินค้า: ${orderData.productName}` },
-          { type: "text", text: `🗓️ วันที่สั่งซื้อ: ${(orderData.purchaseDate.toDate ? orderData.purchaseDate.toDate() : new Date(orderData.purchaseDate)).toISOString().split("T")[0]}` }
+          { type: "text", text: `🗓️ วันที่สั่งซื้อ: ${formatDate(orderData.purchaseDate)}` }
         ]
       }
     }
@@ -94,7 +103,9 @@ app.get("/api/order/:orderId", async (req, res) => {
       return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
     }
 
-    return res.status(200).json(orderDoc.data());
+    const data = orderDoc.data();
+    data.purchaseDateFormatted = formatDate(data.purchaseDate);
+    return res.status(200).json(data);
   } catch (error) {
     console.error("❌ Error fetching order:", error);
     return res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงคำสั่งซื้อ" });

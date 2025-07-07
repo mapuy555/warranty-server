@@ -45,17 +45,6 @@
       color: #555;
       margin-top: 10px;
     }
-    #previewBox {
-      display: none;
-      background: #fff;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 0 6px rgba(0,0,0,0.1);
-      margin-top: 20px;
-    }
-    #previewBox p {
-      margin: 5px 0;
-    }
   </style>
 </head>
 <body>
@@ -76,136 +65,105 @@
     <input type="text" id="province" placeholder="จังหวัด" required />
     <input type="text" id="postcode" placeholder="รหัสไปรษณีย์" required pattern="[0-9]{5}" />
 
-    <button type="button" id="previewBtn">ตรวจสอบข้อมูล</button>
-    <div id="previewBox">
-      <h4>📋 ตรวจสอบข้อมูลก่อนยืนยัน</h4>
-      <div id="previewContent"></div>
-      <button type="submit">ยืนยันลงทะเบียน</button>
-    </div>
+    <button type="submit">ถัดไป ➤ ตรวจสอบข้อมูล</button>
     <p class="error" id="errorMsg"></p>
   </form>
 
-<script>
-const apiBase = "https://warranty-api-umg2.onrender.com";
-let userId = "";
+  <script>
+    const apiBase = "https://warranty-api-umg2.onrender.com";
+    let userId = "";
 
-async function getLiffId() {
-  const res = await fetch(`${apiBase}/api/liff-id`);
-  const data = await res.json();
-  return data.liffId;
-}
-
-async function initLIFF() {
-  const liffId = await getLiffId();
-  if (!liffId) return;
-  await liff.init({ liffId });
-  if (!liff.isLoggedIn()) return liff.login();
-  const profile = await liff.getProfile();
-  userId = profile.userId;
-  document.getElementById("lineName").innerText = `👤 คุณ: ${profile.displayName}`;
-  await fetch(`${apiBase}/api/user`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(profile),
-  });
-}
-
-function sanitize(input) {
-  return input.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  initLIFF();
-
-  const form = document.getElementById("registerForm");
-  const errorMsg = document.getElementById("errorMsg");
-  const previewBtn = document.getElementById("previewBtn");
-  const previewBox = document.getElementById("previewBox");
-  const previewContent = document.getElementById("previewContent");
-
-  previewBtn.addEventListener("click", async () => {
-    errorMsg.innerText = "";
-    const firstname = sanitize(document.getElementById("firstname").value.trim());
-    const lastname = sanitize(document.getElementById("lastname").value.trim());
-    const name = `${firstname} ${lastname}`;
-    const phone = document.getElementById("phone").value.trim();
-    const email = sanitize(document.getElementById("email").value.trim());
-    const orderId = sanitize(document.getElementById("orderId").value.trim());
-    const address = {
-      line: sanitize(document.getElementById("addressLine").value.trim()),
-      subDistrict: sanitize(document.getElementById("subDistrict").value.trim()),
-      district: sanitize(document.getElementById("district").value.trim()),
-      province: sanitize(document.getElementById("province").value.trim()),
-      postcode: sanitize(document.getElementById("postcode").value.trim()),
-    };
-
-    if (!/^0\d{9}$/.test(phone)) {
-      errorMsg.innerText = "📵 กรุณากรอกเบอร์โทร 10 หลักให้ถูกต้อง";
-      return;
-    }
-    if (!isValidEmail(email)) {
-      errorMsg.innerText = "📧 อีเมลไม่ถูกต้อง";
-      return;
+    async function getLiffId() {
+      const res = await fetch(`${apiBase}/api/liff-id`);
+      const data = await res.json();
+      return data.liffId;
     }
 
-    const orderRes = await fetch(`${apiBase}/api/order/${orderId}`);
-    if (!orderRes.ok) {
-      errorMsg.innerText = "❌ ไม่พบคำสั่งซื้อ";
-      return;
+    async function initLIFF() {
+      const liffId = await getLiffId();
+      await liff.init({ liffId });
+
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+      document.getElementById("lineName").innerText = `👤 คุณ: ${profile.displayName}`;
+
+      await fetch(`${apiBase}/api/user`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: profile.userId,
+          displayName: profile.displayName,
+          pictureUrl: profile.pictureUrl,
+        }),
+      });
     }
-    const orderData = await orderRes.json();
 
-    previewContent.innerHTML = `
-      <p>👤 ชื่อ: ${name}</p>
-      <p>📞 เบอร์: ${phone}</p>
-      <p>📧 อีเมล: ${email}</p>
-      <p>🧾 คำสั่งซื้อ: ${orderId}</p>
-      <p>📍 ที่อยู่: ${address.line}, ${address.subDistrict}, ${address.district}, ${address.province} ${address.postcode}</p>
-      <hr />
-      <p>📦 รายการสินค้า: ${orderData.productName}</p>
-      <p>📅 วันที่สั่งซื้อ: ${new Date(orderData.purchaseDate).toLocaleDateString("th-TH")}</p>
-    `;
+    function sanitize(input) {
+      return input.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
 
-    previewBox.style.display = "block";
-  });
+    function isValidEmail(email) {
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return re.test(email);
+    }
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const firstname = sanitize(document.getElementById("firstname").value.trim());
-    const lastname = sanitize(document.getElementById("lastname").value.trim());
-    const name = `${firstname} ${lastname}`;
-    const phone = document.getElementById("phone").value.trim();
-    const email = sanitize(document.getElementById("email").value.trim());
-    const orderId = sanitize(document.getElementById("orderId").value.trim());
-    const address = {
-      line: sanitize(document.getElementById("addressLine").value.trim()),
-      subDistrict: sanitize(document.getElementById("subDistrict").value.trim()),
-      district: sanitize(document.getElementById("district").value.trim()),
-      province: sanitize(document.getElementById("province").value.trim()),
-      postcode: sanitize(document.getElementById("postcode").value.trim()),
-    };
+    document.addEventListener("DOMContentLoaded", () => {
+      initLIFF();
 
-    const data = { userId, name, phone, email, orderId, address };
+      const form = document.getElementById("registerForm");
+      const errorMsg = document.getElementById("errorMsg");
 
-    const res = await fetch(`${apiBase}/api/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorMsg.innerText = "";
+
+        const firstname = sanitize(document.getElementById("firstname").value.trim());
+        const lastname = sanitize(document.getElementById("lastname").value.trim());
+        const name = `${firstname} ${lastname}`;
+        const phone = document.getElementById("phone").value.trim();
+        const email = sanitize(document.getElementById("email").value.trim());
+        const orderId = sanitize(document.getElementById("orderId").value.trim());
+
+        const address = {
+          line: sanitize(document.getElementById("addressLine").value.trim()),
+          subDistrict: sanitize(document.getElementById("subDistrict").value.trim()),
+          district: sanitize(document.getElementById("district").value.trim()),
+          province: sanitize(document.getElementById("province").value.trim()),
+          postcode: sanitize(document.getElementById("postcode").value.trim()),
+        };
+
+        if (!/^0\d{9}$/.test(phone)) {
+          errorMsg.innerText = "📵 กรุณากรอกเบอร์โทร 10 หลักให้ถูกต้อง";
+          return;
+        }
+
+        if (!isValidEmail(email)) {
+          errorMsg.innerText = "📧 อีเมลไม่ถูกต้อง";
+          return;
+        }
+
+        // ไปหน้ายืนยัน พร้อมส่ง query string ไปให้ liff-confirm.html
+        const query = new URLSearchParams({
+          userId,
+          name,
+          phone,
+          email,
+          orderId,
+          line: address.line,
+          subDistrict: address.subDistrict,
+          district: address.district,
+          province: address.province,
+          postcode: address.postcode
+        }).toString();
+
+        window.location.href = `liff-confirm.html?${query}`;
+      });
     });
-
-    if (res.ok) {
-      alert("✅ ลงทะเบียนสำเร็จ");
-      liff.closeWindow();
-    } else {
-      const err = await res.json();
-      errorMsg.innerText = err.message || "❌ ไม่สามารถลงทะเบียนได้";
-    }
-  });
-});
-</script>
+  </script>
 </body>
 </html>
