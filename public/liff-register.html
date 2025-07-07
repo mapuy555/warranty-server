@@ -70,7 +70,7 @@
   </form>
 
   <script>
-    const apiBase = "https://warranty-api-umg2.onrender.com"; // ✅ เปลี่ยนตามของคุณ
+    const apiBase = "https://warranty-api-umg2.onrender.com";
     let userId = "";
 
     async function getLiffId() {
@@ -98,14 +98,14 @@
           userId = profile.userId;
           document.getElementById("lineName").innerText = `👤 คุณ: ${profile.displayName}`;
 
-          // ⬇️ บันทึกข้อมูลผู้ใช้ไปยัง Firestore ผ่าน Server
+          // ✅ บันทึกโปรไฟล์ผู้ใช้
           await fetch(`${apiBase}/api/user`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               userId: profile.userId,
               displayName: profile.displayName,
-              pictureUrl: profile.pictureUrl
+              pictureUrl: profile.pictureUrl,
             }),
           });
         }

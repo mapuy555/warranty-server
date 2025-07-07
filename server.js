@@ -1,4 +1,4 @@
-require("dotenv").config(); // ⬅️ ต้องอยู่บรรทัดแรกเสมอ
+require("dotenv").config(); // ⬆️ ต้องอยู่บรรทัดแรกเสมอ
 
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -46,13 +46,13 @@ function createFlexMessage(data, orderData) {
           { type: "text", text: `📌 ชื่อ: ${data.name}` },
           { type: "text", text: `📞 เบอร์: ${data.phone}` },
           { type: "text", text: `📧 อีเมล: ${data.email}` },
-          { type: "text", text: `🧾 คำสั่งซื้อ: ${data.orderId}` },
+          { type: "text", text: `🗒️ คำสั่งซื้อ: ${data.orderId}` },
           { type: "text", text: `📍 ที่อยู่: ${data.address.line}, ${data.address.subDistrict}, ${data.address.district}, ${data.address.province} ${data.address.postcode}` },
-          { type: "text", text: `📅 วันที่ลงทะเบียน: ${data.registeredAt}` },
+          { type: "text", text: `🗓️ วันที่ลงทะเบียน: ${data.registeredAt}` },
           { type: "text", text: `⏳ หมดประกัน: ${data.warrantyUntil}` },
           { type: "separator", margin: "md" },
           { type: "text", text: `📦 รายการสินค้า: ${orderData.productName}` },
-          { type: "text", text: `📅 วันที่สั่งซื้อ: ${(orderData.purchaseDate.toDate ? orderData.purchaseDate.toDate() : new Date(orderData.purchaseDate)).toISOString().split("T")[0]}` }
+          { type: "text", text: `🗓️ วันที่สั่งซื้อ: ${(orderData.purchaseDate.toDate ? orderData.purchaseDate.toDate() : new Date(orderData.purchaseDate)).toISOString().split("T")[0]}` }
         ]
       }
     }
