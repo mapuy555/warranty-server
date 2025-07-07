@@ -64,7 +64,7 @@ app.get("/api/liff-id", (req, res) => {
   res.json({ liffId: process.env.LIFF_ID });
 });
 
-// ✅ Endpoint: บันทึกโปรไฟล์ผู้ใช้จาก LINE (หลังจาก Allow)
+// ✅ Endpoint: บันทึกโปรไฟล์ผู้ใช้จาก LINE
 app.post("/api/user", async (req, res) => {
   try {
     const { userId, displayName, pictureUrl } = req.body;
@@ -81,6 +81,23 @@ app.post("/api/user", async (req, res) => {
   } catch (error) {
     console.error("❌ Error saving user profile:", error);
     res.status(500).json({ message: "ไม่สามารถบันทึกข้อมูลผู้ใช้ได้" });
+  }
+});
+
+// ✅ Endpoint: ตรวจสอบรายละเอียดคำสั่งซื้อก่อนลงทะเบียน
+app.get("/api/order/:orderId", async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+    const orderDoc = await db.collection("orders").doc(orderId).get();
+
+    if (!orderDoc.exists) {
+      return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
+    }
+
+    return res.status(200).json(orderDoc.data());
+  } catch (error) {
+    console.error("❌ Error fetching order:", error);
+    return res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงคำสั่งซื้อ" });
   }
 });
 
