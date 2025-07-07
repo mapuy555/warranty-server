@@ -55,12 +55,13 @@ function createFlexMessage(data, orderData) {
           { type: "text", text: `⏳ หมดประกัน: ${data.warrantyUntil}` },
           { type: "separator", margin: "md" },
           { type: "text", text: `📦 รายการสินค้า: ${orderData.productName}` },
-          { type: "text", text: `📅 วันที่สั่งซื้อ: ${orderData.purchaseDate}` }
+          { type: "text", text: `📅 วันที่สั่งซื้อ: ${(orderData.purchaseDate.toDate ? orderData.purchaseDate.toDate() : new Date(orderData.purchaseDate)).toISOString().split("T")[0]}` }
         ]
       }
     }
   };
 }
+
 
 // ✅ Endpoint: ส่ง LIFF ID ให้ฝั่ง client แบบปลอดภัย
 app.get("/api/liff-id", (req, res) => {
