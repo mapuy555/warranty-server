@@ -232,6 +232,7 @@ app.post("/api/claim", async (req, res) => {
 });
 
 // ✅ ตรวจสอบสถานะ
+// ✅ ตรวจสอบสถานะ
 app.get("/api/check-status/:orderId", async (req, res) => {
   const orderId = req.params.orderId;
 
@@ -252,16 +253,16 @@ app.get("/api/check-status/:orderId", async (req, res) => {
     if (registrationDoc.exists) {
       const reg = registrationDoc.data();
       result.registered = true;
-      result.name = reg.name;
-      result.warrantyUntil = reg.warrantyUntil;
-      result.registeredAt = formatDate(reg.registeredAt);
+      result.name = reg.name || "-";
+      result.warrantyUntil = reg.warrantyUntil || "-";
+      result.registeredAt = reg.registeredAt ? formatDate(reg.registeredAt) : "-";
     }
 
     if (!claimQuery.empty) {
       const claim = claimQuery.docs[0].data();
       result.claimed = true;
       result.claimStatus = claim.status || "อยู่ระหว่างดำเนินการ";
-      result.claimDate = formatDate(claim.claimedAt);
+      result.claimDate = claim.claimedAt ? formatDate(claim.claimedAt) : "-";
       result.reason = claim.reason || "-";
     }
 
@@ -271,6 +272,7 @@ app.get("/api/check-status/:orderId", async (req, res) => {
     return res.status(500).json({ message: "เกิดข้อผิดพลาดในการตรวจสอบสถานะ" });
   }
 });
+
 
 // ✅ Start Server
 app.listen(PORT, () => {
