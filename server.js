@@ -1,4 +1,4 @@
-require("dotenv").config(); // ⬆️ ต้องอยู่บรรทัดแรกเสมอ
+require("dotenv").config(); // ต้องอยู่บรรทัดแรก
 
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -9,7 +9,9 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: "https://warranty-register-53b10.web.app"
+}));
 app.use(bodyParser.json());
 
 // 🔐 Firebase Admin Init จาก Environment Variables (Base64)
@@ -23,14 +25,13 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-// ✅ Helper: คำนวณวันหมดประกัน
+// ✅ Helper
 function calculateWarrantyUntil(days) {
   const today = new Date();
   today.setDate(today.getDate() + days);
   return today.toISOString().split("T")[0];
 }
 
-// ✅ Helper: แปลง Timestamp เป็น YYYY-MM-DD
 function formatDate(dateField) {
   try {
     return dateField.toDate().toISOString().split("T")[0];
@@ -39,7 +40,6 @@ function formatDate(dateField) {
   }
 }
 
-// ✅ Helper: สร้าง Flex Message สำหรับลงทะเบียน
 function createFlexMessage(data, orderData) {
   return {
     type: "flex",
@@ -73,7 +73,7 @@ app.get("/api/liff-id", (req, res) => {
   res.json({ liffId: process.env.LIFF_ID });
 });
 
-// ✅ บันทึกโปรไฟล์ผู้ใช้จาก LINE
+// ✅ Save LINE user
 app.post("/api/user", async (req, res) => {
   try {
     const { userId, displayName, pictureUrl } = req.body;
@@ -93,7 +93,7 @@ app.post("/api/user", async (req, res) => {
   }
 });
 
-// ✅ ตรวจสอบรายละเอียดคำสั่งซื้อ
+// ✅ ดึงคำสั่งซื้อ
 app.get("/api/order/:orderId", async (req, res) => {
   try {
     const orderId = req.params.orderId;
@@ -231,7 +231,7 @@ app.post("/api/claim", async (req, res) => {
   }
 });
 
-// ✅ ตรวจสอบสถานะประกันและเคลมสินค้า
+// ✅ ตรวจสอบสถานะ
 app.get("/api/check-status/:orderId", async (req, res) => {
   const orderId = req.params.orderId;
 
@@ -271,7 +271,6 @@ app.get("/api/check-status/:orderId", async (req, res) => {
     return res.status(500).json({ message: "เกิดข้อผิดพลาดในการตรวจสอบสถานะ" });
   }
 });
-
 
 // ✅ Start Server
 app.listen(PORT, () => {
