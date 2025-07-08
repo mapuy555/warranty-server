@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>ตรวจสอบข้อมูลก่อนยืนยัน</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      max-width: 400px;
+      margin: 30px auto;
+      padding: 20px;
+      background-color: #f4f4f4;
+      border-radius: 10px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; color: #333; }
+    .box {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+    .box p {
+      margin: 6px 0;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      margin-top: 15px;
+      cursor: pointer;
+    }
+    #confirmBtn { background-color: #06c755; color: white; }
+    #editBtn { background-color: #ccc; }
+    .error { color: red; margin-top: 10px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h2>ตรวจสอบข้อมูลก่อนยืนยัน</h2>
+  <div class="box" id="previewBox">
+    <p><strong>ชื่อ:</strong> <span id="name"></span></p>
+    <p><strong>เบอร์โทร:</strong> <span id="phone"></span></p>
+    <p><strong>อีเมล:</strong> <span id="email"></span></p>
+    <p><strong>เลขคำสั่งซื้อ:</strong> <span id="orderId"></span></p>
+    <p><strong>ที่อยู่:</strong> <span id="address"></span></p>
+    <hr />
+    <p><strong>สินค้า:</strong> <span id="product">กำลังโหลด...</span></p>
+    <p><strong>วันที่สั่งซื้อ:</strong> <span id="purchaseDate">-</span></p>
+  </div>
+
+  <button id="confirmBtn">✅ ยืนยันลงทะเบียน</button>
+  <button id="editBtn">🔁 กลับไปแก้ไข</button>
+  <p class="error" id="errorMsg"></p>
+
+  <script>
+    const apiBase = "https://warranty-api-umg2.onrender.com";
+    const params = new URLSearchParams(window.location.search);
+    const errorMsg = document.getElementById("errorMsg");
+    const confirmBtn = document.getElementById("confirmBtn");
+
+    let data = null;
+
+    try {
+      data = JSON.parse(decodeURIComponent(params.get("data")));
+    } catch (err) {
+      errorMsg.innerText = "❌ ข้อมูลไม่ถูกต้อง กรุณากลับไปกรอกใหม่";
+      document.getElementById("confirmBtn").disabled = true;
+      document.getElementById("editBtn").innerText = "🔙 กลับหน้าหลัก";
+      throw err;
+    }
+
+    // แสดงข้อมูลผู้ใช้
+    document.getElementById("name").innerText = data.name;
+    document.getElementById("phone").innerText = data.phone;
+    document.getElementById("email").innerText = data.email;
+    document.getElementById("orderId").innerText = data.orderId;
+    document.getElementById("address").innerText = `${data.address.line}, ${data.address.subDistrict}, ${data.address.district}, ${data.address.province} ${data.address.postcode}`;
+
+    // ดึงรายละเอียดคำสั่งซื้อ
+    async function fetchOrderDetails(orderId) {
+      try {
+        const res = await fetch(`${apiBase}/api/order/${orderId}`);
+        if (!res.ok) throw new Error("ไม่พบคำสั่งซื้อ กรุณาตรวจสอบเลขคำสั่งซื้ออีกครั้ง");
+
+        const order = await res.json();
+        document.getElementById("product").innerText = order.productName || "-";
+        document.getElementById("purchaseDate").innerText =
+          order.purchaseDate? new Date(order.purchaseDate._seconds * 1000).toLocaleDateString("th-TH") : "-";
+      } catch (err) {
+        errorMsg.innerText = err.message || "⚠️ เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า";
+        document.getElementById("product").innerText = "-";
+        document.getElementById("purchaseDate").innerText = "-";
+      }
+    }
+
+    fetchOrderDetails(data.orderId);
+
+    // กดยืนยันลงทะเบียน
+    confirmBtn.addEventListener("click", async () => {
+      confirmBtn.disabled = true;
+      confirmBtn.innerText = "⏳ กำลังส่ง...";
+      errorMsg.innerText = "";
+
+      try {
+        const res = await fetch(`${apiBase}/api/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          alert("✅ ลงทะเบียนสำเร็จ");
+          liff.closeWindow();
+        } else {
+          errorMsg.innerText = result.message || "❌ ลงทะเบียนไม่สำเร็จ";
+        }
+      } catch (err) {
+        errorMsg.innerText = "❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์";
+      } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = "✅ ยืนยันลงทะเบียน";
+      }
+    });
+
+    // กลับไปแก้ไข
+    document.getElementById("editBtn").addEventListener("click", () => {
+      history.back();
+    });
+  </script>
+</body>
+</html>

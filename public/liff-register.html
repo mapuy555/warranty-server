@@ -147,21 +147,17 @@
           return;
         }
 
-        // ไปหน้ายืนยัน พร้อมส่ง query string ไปให้ liff-confirm.html
-        const query = new URLSearchParams({
+        // ✅ ส่งข้อมูลทั้งหมดเป็น JSON ไปยัง liff-confirm.html ผ่าน query string
+        const data = {
           userId,
           name,
           phone,
           email,
           orderId,
-          line: address.line,
-          subDistrict: address.subDistrict,
-          district: address.district,
-          province: address.province,
-          postcode: address.postcode
-        }).toString();
+          address
+        };
 
-        window.location.href = `liff-confirm.html?${query}`;
+        window.location.href = `liff-confirm.html?data=${encodeURIComponent(JSON.stringify(data))}`;
       });
     });
   </script>

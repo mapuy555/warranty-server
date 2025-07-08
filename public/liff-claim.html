@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>แจ้งเคลมสินค้า</title>
+  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      max-width: 400px;
+      margin: 30px auto;
+      padding: 20px;
+      background-color: #f7f7f7;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+    input, textarea, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    button {
+      background-color: #ff8800;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #e57700;
+    }
+    #lineName {
+      text-align: center;
+      color: #555;
+      font-size: 15px;
+    }
+    .error {
+      color: red;
+      margin-top: 10px;
+      font-size: 14px;
+      text-align: center;
+    }
+    .success {
+      color: green;
+      font-size: 14px;
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>📦 แจ้งเคลมสินค้า</h2>
+  <p id="lineName">👤 กำลังโหลดผู้ใช้...</p>
+
+  <form id="claimForm">
+    <input type="text" id="orderId" placeholder="เลขคำสั่งซื้อ" required>
+    <textarea id="reason" placeholder="เหตุผลในการเคลม" required></textarea>
+    <input type="text" id="contact" placeholder="ช่องทางติดต่อกลับ (เบอร์ / ไลน์ / อีเมล)" required>
+    <button type="submit">📨 ส่งคำร้องเคลม</button>
+    <p class="error" id="errorMsg"></p>
+    <p class="success" id="successMsg"></p>
+  </form>
+
+  <script>
+    const apiBase = "https://warranty-api-umg2.onrender.com";
+    let userId = "";
+
+    async function getLiffId() {
+      const res = await fetch(`${apiBase}/api/liff-id`);
+      const data = await res.json();
+      return data.liffId;
+    }
+
+    async function initLIFF() {
+      const liffId = await getLiffId();
+      await liff.init({ liffId });
+
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+      document.getElementById("lineName").innerText = `👤 คุณ: ${profile.displayName}`;
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      initLIFF();
+
+      const form = document.getElementById("claimForm");
+      const errorMsg = document.getElementById("errorMsg");
+      const successMsg = document.getElementById("successMsg");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errorMsg.innerText = "";
+        successMsg.innerText = "";
+
+        const orderId = document.getElementById("orderId").value.trim();
+        const reason = document.getElementById("reason").value.trim();
+        const contact = document.getElementById("contact").value.trim();
+
+        if (!orderId || !reason || !contact) {
+          errorMsg.innerText = "กรุณากรอกข้อมูลให้ครบทุกช่อง";
+          return;
+        }
+
+        try {
+          const res = await fetch(`${apiBase}/api/claim`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, orderId, reason, contact })
+          });
+
+          const result = await res.json();
+          if (res.ok) {
+            successMsg.innerText = result.message;
+            setTimeout(() => {
+              liff.closeWindow();
+            }, 2000);
+          } else {
+            errorMsg.innerText = result.message || "❌ ไม่สามารถส่งคำร้องได้";
+          }
+        } catch (err) {
+          errorMsg.innerText = "❌ ระบบมีปัญหา กรุณาลองใหม่ภายหลัง";
+        }
+      });
+    });
+  </script>
+</body>
+</html>
