@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard</title>
+  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background-color: #f7f7f7;
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      margin: 15px auto;
+      padding: 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background-color: #2d88ff;
+      color: white;
+      cursor: pointer;
+    }
+    .btn-secondary {
+      background-color: #777;
+    }
+  </style>
+</head>
+<body>
+  <h1>Admin Dashboard</h1>
+  <div id="adminMenu" style="display: none;">
+    <button class="btn" onclick="goTo('admin-registrations.html')">📦 ดูรายการลงทะเบียน</button>
+    <button class="btn" onclick="goTo('admin-claims.html')">🛠️ ดูรายการเคลมสินค้า</button>
+    <button class="btn btn-secondary" onclick="logout()">🚪 ออกจากระบบ</button>
+  </div>
+  <div id="errorMessage" style="color: red; display: none;"></div>
+<script>
+  async function init() {
+    await liff.init({ liffId: "YOUR_LIFF_ID" });
+
+    if (!liff.isLoggedIn()) {
+      liff.login();
+      return;
+    }
+
+    const profile = await liff.getProfile();
+    alert("userId ของคุณคือ: " + profile.userId);
+    console.log("userId:", profile.userId);
+  }
+
+  init();
+</script>
+
+  <script>
+    async function init() {
+      await liff.init({ liffId: "2007683243-bmROXYpa" });
+
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return;
+      }
+
+      const profile = await liff.getProfile();
+      const userId = profile.userId;
+
+      const res = await fetch(`/api/check-admin?userId=${userId}`);
+      const isAdmin = await res.json();
+
+      if (isAdmin) {
+        document.getElementById("adminMenu").style.display = "block";
+      } else {
+        document.getElementById("errorMessage").textContent = "คุณไม่มีสิทธิ์เข้าถึงระบบหลังบ้าน";
+        document.getElementById("errorMessage").style.display = "block";
+        setTimeout(() => liff.logout(), 2000);
+      }
+    }
+
+    function goTo(page) {
+      location.href = page;
+    }
+
+    function logout() {
+      liff.logout();
+      location.reload();
+    }
+
+    init();
+  </script>
+  
+</body>
+</html>
