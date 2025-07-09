@@ -1,8 +1,3 @@
-app.use((req, res, next) => {
-  console.log(`👉 ${req.method} ${req.url}`);
-  next();
-});
-
 
 require("dotenv").config(); // ต้องอยู่บรรทัดแรก
 
@@ -13,6 +8,12 @@ const axios = require("axios");
 const cors = require("cors");
 
 const app = express();
+
+app.use((req, res, next) => {
+  console.log(`👉 ${req.method} ${req.url}`);
+  next();
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({ origin: true }));
