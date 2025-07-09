@@ -1,4 +1,3 @@
-
 require("dotenv").config(); // ต้องอยู่บรรทัดแรก
 
 const express = require("express");
@@ -56,7 +55,7 @@ app.post("/api/register", async (req, res) => {
     return res.status(400).json({ error: "คำสั่งซื้อนี้ลงทะเบียนไปแล้ว" });
   }
 
-  const warrantyUntil = calculateWarrantyUntil(365); // รับประกัน 1 ปี
+  const warrantyUntil = calculateWarrantyUntil(365);
   await regDoc.set({
     orderId,
     productName,
@@ -69,7 +68,6 @@ app.post("/api/register", async (req, res) => {
     warrantyUntil,
   });
 
-  // ตอบกลับ Flex Message ไปยัง LINE
   await axios.post("https://api.line.me/v2/bot/message/push", {
     to: userId,
     messages: [
@@ -126,7 +124,6 @@ app.post("/api/claim", async (req, res) => {
     claimedAt: admin.firestore.Timestamp.now(),
   });
 
-  // ตอบกลับข้อความ LINE
   await axios.post("https://api.line.me/v2/bot/message/push", {
     to: userId,
     messages: [
@@ -189,11 +186,10 @@ app.post("/webhook", async (req, res) => {
   for (const event of events) {
     const userId = event.source.userId;
 
-    // ✅ ตรวจว่าพิมพ์คำว่า "หลังบ้าน"
     if (event.type === "message" && event.message.type === "text") {
       const text = event.message.text.trim().toLowerCase();
 
-      const adminList = process.env.ADMIN_USER_IDS.split(",");
+      const adminList = process.env.ADMIN_USER_IDS.split(",").map(id => id.trim());
       if (text === "หลังบ้าน" && adminList.includes(userId)) {
         const flexMessage = {
           type: "flex",
@@ -225,7 +221,7 @@ app.post("/webhook", async (req, res) => {
                   action: {
                     type: "uri",
                     label: "เปิดหลังบ้าน",
-                    uri: "https://liff.line.me/165xxxxxxxxx" // 👉 เปลี่ยนเป็น LIFF URL ของคุณ
+                    uri: process.env.LIFF_ADMIN_URL
                   }
                 }
               ]
@@ -249,6 +245,30 @@ app.post("/webhook", async (req, res) => {
   res.sendStatus(200);
 });
 
+// ✅ ส่ง Firebase Config ไป frontend
+app.get("/api/firebase-config", (req, res) => {
+  res.json({
+    apiKey: process.env.FIREBASE_API_KEY,
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.FIREBASE_APP_ID,
+  });
+});
+
+// ✅ ส่ง LIFF ID ไป frontend
+app.get("/api/liff-id", (req, res) => {
+  res.json({ liffId: process.env.LIFF_ADMIN_ID });
+});
+
+// ✅ ตรวจสอบว่า userId เป็นแอดมินหรือไม่
+app.post("/api/check-admin", (req, res) => {
+  const { userId } = req.body;
+  const adminList = process.env.ADMIN_USER_IDS.split(",").map(id => id.trim());
+  const isAdmin = adminList.includes(userId);
+  res.json({ isAdmin });
+});
 
 // ✅ Start Server
 app.listen(PORT, () => {
