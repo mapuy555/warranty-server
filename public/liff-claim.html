@@ -1,87 +1,77 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>แจ้งเคลมสินค้า</title>
   <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f2f5f9;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
+      font-family: "Segoe UI", sans-serif;
       max-width: 400px;
       margin: 30px auto;
       padding: 20px;
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      background-color: #f7f7f7;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
     h2 {
       text-align: center;
-      color: #1a202c;
-      margin-bottom: 5px;
+      color: #333;
     }
-    .sub {
-      text-align: center;
-      font-size: 14px;
-      color: #6b7280;
-      margin-bottom: 20px;
-    }
-    input, textarea {
+    input, textarea, button {
       width: 100%;
       padding: 12px;
-      margin-top: 10px;
-      font-size: 15px;
-      border: 1px solid #d1d5db;
+      margin-top: 12px;
+      font-size: 16px;
       border-radius: 8px;
+      border: 1px solid #ccc;
       box-sizing: border-box;
-      background-color: #f9fafb;
     }
     textarea {
       resize: vertical;
       min-height: 80px;
     }
     button {
-      width: 100%;
-      background-color: #0d9488;
+      background-color: #ff8800;
       color: white;
       border: none;
-      padding: 14px;
-      border-radius: 8px;
-      font-size: 16px;
-      margin-top: 20px;
       cursor: pointer;
     }
     button:hover {
-      background-color: #0f766e;
+      background-color: #e57700;
     }
-    .status {
+    #lineName {
       text-align: center;
-      font-size: 14px;
-      margin-top: 15px;
+      color: #555;
+      font-size: 15px;
     }
-    .error { color: #dc2626; }
-    .success { color: #16a34a; }
+    .error {
+      color: red;
+      margin-top: 10px;
+      font-size: 14px;
+      text-align: center;
+    }
+    .success {
+      color: green;
+      font-size: 14px;
+      margin-top: 10px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>แจ้งเคลมสินค้า</h2>
-    <p class="sub" id="lineName">กำลังโหลดผู้ใช้...</p>
+  <h2>📦 แจ้งเคลมสินค้า</h2>
+  <p id="lineName">👤 กำลังโหลดผู้ใช้...</p>
 
-    <form id="claimForm">
-      <input type="text" id="orderId" placeholder="เลขคำสั่งซื้อ" required />
-      <textarea id="reason" placeholder="เหตุผลในการเคลม" required></textarea>
-      <input type="text" id="contact" placeholder="ช่องทางติดต่อกลับ (เบอร์ / ไลน์ / อีเมล)" required />
-      <button type="submit">ส่งคำร้องเคลม</button>
-      <div class="status error" id="errorMsg"></div>
-      <div class="status success" id="successMsg"></div>
-    </form>
-  </div>
+  <form id="claimForm">
+    <input type="text" id="orderId" placeholder="เลขคำสั่งซื้อ" required>
+    <textarea id="reason" placeholder="เหตุผลในการเคลม" required></textarea>
+    <input type="text" id="contact" placeholder="ช่องทางติดต่อกลับ (เบอร์ / ไลน์ / อีเมล)" required>
+    <button type="submit">📨 ส่งคำร้องเคลม</button>
+    <p class="error" id="errorMsg"></p>
+    <p class="success" id="successMsg"></p>
+  </form>
 
   <script>
     const apiBase = "https://warranty-api-umg2.onrender.com";

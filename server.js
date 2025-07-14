@@ -164,7 +164,7 @@ app.post("/api/register", async (req, res) => {
     res.status(200).json({ message: "✅ ลงทะเบียนสำเร็จ" });
 
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error("❌ Error on /api/claim:", error.response?.data || error.message || error);
     res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" });
   }
 });
