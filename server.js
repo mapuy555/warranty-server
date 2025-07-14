@@ -182,7 +182,7 @@ app.post("/api/claim", async (req, res) => {
     if (!orderDoc.exists) {
       return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
     }
-
+//test thongnee
     const regDoc = await db.collection("registrations").doc(orderId).get();
     if (!regDoc.exists) {
       return res.status(400).json({ message: "⛔ ยังไม่ได้ลงทะเบียนสินค้านี้" });
