@@ -205,20 +205,51 @@ app.post("/api/claim", async (req, res) => {
       claimedAt: admin.firestore.Timestamp.now()
     });
 
-    const message = {
+    const messages = [
+    {
       type: "text",
       text: `📢 ระบบได้รับการแจ้งเคลมของคุณแล้ว\nคำสั่งซื้อ: ${orderId}\nเหตุผล: ${reason}\nทีมงานจะติดต่อกลับภายใน 1-2 วันทำการ`
-    };
+    },
+    {
+    type: "flex",
+    altText: "กรุณาส่งรูปหลักฐานผ่านแชทนี้",
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "md",
+        contents: [
+          {
+            type: "text",
+            text: "📷 กรุณาส่งรูปหลักฐานการเคลม",
+            weight: "bold",
+            size: "md",
+            wrap: true,
+            color: "#333"
+          },
+          {
+            type: "text",
+            text: "เช่น:\n• รูปสินค้ามีปัญหา\n• กล่องสินค้า\n• ใบเสร็จ\nส่งผ่านแชทนี้ได้เลยครับ",
+            size: "sm",
+            color: "#555",
+            wrap: true
+          }
+        ]
+      }
+    }
+  }
+];
 
     await axios.post("https://api.line.me/v2/bot/message/push", {
-      to: userId,
-      messages: [message],
-    }, {
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-      },
-    });
+  to: userId,
+  messages: messages
+}, {
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`
+  }
+});
 
     res.status(200).json({ message: "✅ ส่งคำร้องเคลมสำเร็จ" });
 
