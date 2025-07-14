@@ -7,15 +7,11 @@ const axios = require("axios");
 const cors = require("cors");
 
 const app = express();
-
-app.use((req, res, next) => {
-  console.log(`👉 ${req.method} ${req.url}`);
-  next();
-});
-
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({ origin: true }));
+app.use(cors({
+  origin: "https://warranty-register-53b10.web.app"
+}));
 app.use(bodyParser.json());
 
 // 🔐 Firebase Admin Init จาก Environment Variables (Base64)
@@ -40,237 +36,289 @@ function formatDate(dateField) {
     return "-";
   }
 }
-
-// ✅ API: ลงทะเบียนสินค้า
-app.post("/api/register", async (req, res) => {
-  const { orderId, productName, serialNumber, purchaseDate, customerName, contact, userId } = req.body;
-
-  if (!orderId || !productName || !serialNumber || !purchaseDate || !userId) {
-    return res.status(400).json({ error: "ข้อมูลไม่ครบถ้วน" });
-  }
-
-  const regDoc = db.collection("registrations").doc(orderId);
-  const doc = await regDoc.get();
-  if (doc.exists) {
-    return res.status(400).json({ error: "คำสั่งซื้อนี้ลงทะเบียนไปแล้ว" });
-  }
-
-  const warrantyUntil = calculateWarrantyUntil(365);
-  await regDoc.set({
-    orderId,
-    productName,
-    serialNumber,
-    purchaseDate,
-    customerName,
-    contact,
-    userId,
-    registeredAt: admin.firestore.Timestamp.now(),
-    warrantyUntil,
-  });
-
-  await axios.post("https://api.line.me/v2/bot/message/push", {
-    to: userId,
-    messages: [
-      {
-        type: "flex",
-        altText: "ลงทะเบียนรับประกันสำเร็จ",
-        contents: {
-          type: "bubble",
-          body: {
-            type: "box",
-            layout: "vertical",
-            spacing: "md",
-            contents: [
-              { type: "text", text: "📦 ลงทะเบียนสำเร็จ!", weight: "bold", size: "xl" },
-              { type: "text", text: `🔖 สินค้า: ${productName}` },
-              { type: "text", text: `🪪 S/N: ${serialNumber}` },
-              { type: "text", text: `📅 วันที่ซื้อ: ${purchaseDate}` },
-              { type: "text", text: `✅ รับประกันถึง: ${warrantyUntil}` },
-            ],
-          },
-        },
-      },
-    ],
-  }, {
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-    },
-  });
-
-  res.json({ message: "ลงทะเบียนสำเร็จ" });
-});
-
-// ✅ API: แจ้งเคลมสินค้า
-app.post("/api/claim", async (req, res) => {
-  const { orderId, reason, contact, userId } = req.body;
-
-  if (!orderId || !reason || !userId) {
-    return res.status(400).json({ error: "ข้อมูลไม่ครบถ้วน" });
-  }
-
-  const claimRef = db.collection("claims").doc(orderId);
-  const doc = await claimRef.get();
-  if (doc.exists) {
-    return res.status(400).json({ error: "มีการแจ้งเคลมไปแล้ว" });
-  }
-
-  await claimRef.set({
-    orderId,
-    reason,
-    contact,
-    userId,
-    status: "อยู่ระหว่างดำเนินการ",
-    claimedAt: admin.firestore.Timestamp.now(),
-  });
-
-  await axios.post("https://api.line.me/v2/bot/message/push", {
-    to: userId,
-    messages: [
-      {
-        type: "text",
-        text: `📨 ระบบได้รับคำขอเคลมของคุณแล้ว\nคำสั่งซื้อ: ${orderId}\nสถานะ: อยู่ระหว่างดำเนินการ`,
-      },
-    ],
-  }, {
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-    },
-  });
-
-  res.json({ message: "แจ้งเคลมสำเร็จ" });
-});
-
-// ✅ API: ตรวจสอบสถานะ
-app.get("/api/check-status", async (req, res) => {
-  const { orderId } = req.query;
-  if (!orderId) return res.status(400).json({ error: "ต้องระบุ orderId" });
-
-  const regDoc = await db.collection("registrations").doc(orderId).get();
-  const claimDoc = await db.collection("claims").doc(orderId).get();
-
-  if (!regDoc.exists && !claimDoc.exists) {
-    return res.status(404).json({ error: "ไม่พบข้อมูล" });
-  }
-
-  const result = {};
-  if (regDoc.exists) {
-    const r = regDoc.data();
-    result.registration = {
-      productName: r.productName,
-      serialNumber: r.serialNumber,
-      purchaseDate: r.purchaseDate,
-      warrantyUntil: r.warrantyUntil,
-      registeredAt: formatDate(r.registeredAt),
-    };
-  }
-
-  if (claimDoc.exists) {
-    const c = claimDoc.data();
-    result.claim = {
-      reason: c.reason,
-      contact: c.contact,
-      status: c.status,
-      claimedAt: formatDate(c.claimedAt),
-    };
-  }
-
-  res.json(result);
-});
-
-// ✅ LINE Webhook: ตอบกลับเมื่อพิมพ์ "หลังบ้าน"
-app.post("/webhook", async (req, res) => {
-  const events = req.body.events;
-
-  for (const event of events) {
-    const userId = event.source.userId;
-
-    if (event.type === "message" && event.message.type === "text") {
-      const text = event.message.text.trim().toLowerCase();
-
-      const adminList = process.env.ADMIN_USER_IDS.split(",").map(id => id.trim());
-      if (text === "หลังบ้าน" && adminList.includes(userId)) {
-        const flexMessage = {
-          type: "flex",
-          altText: "Admin Dashboard",
-          contents: {
-            type: "bubble",
-            body: {
-              type: "box",
-              layout: "vertical",
-              spacing: "md",
-              contents: [
-                {
-                  type: "text",
-                  text: "🔐 Admin Dashboard",
-                  weight: "bold",
-                  size: "lg",
-                  color: "#000000"
-                },
-                {
-                  type: "text",
-                  text: "เข้าจัดการลงทะเบียนและเคลมสินค้า",
-                  size: "sm",
-                  color: "#666666",
-                  wrap: true
-                },
-                {
-                  type: "button",
-                  style: "primary",
-                  action: {
-                    type: "uri",
-                    label: "เปิดหลังบ้าน",
-                    uri: process.env.LIFF_ADMIN_URL
-                  }
-                }
-              ]
-            }
-          }
-        };
-
-        await axios.post("https://api.line.me/v2/bot/message/push", {
-          to: userId,
-          messages: [flexMessage]
-        }, {
-          headers: {
-            Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-            "Content-Type": "application/json"
-          }
-        });
+function createFlexMessage(data, orderData) {
+  return {
+    type: "flex",
+    altText: "ลงทะเบียนสำเร็จ ✅",
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          { type: "text", text: "✅ ลงทะเบียนสำเร็จ", weight: "bold", size: "lg", color: "#06C755" },
+          { type: "separator", margin: "md" },
+          { type: "text", text: `📌 ชื่อ: ${data.name}` },
+          { type: "text", text: `📞 เบอร์: ${data.phone}` },
+          { type: "text", text: `📧 อีเมล: ${data.email}` },
+          { type: "text", text: `🗒️ คำสั่งซื้อ: ${data.orderId}` },
+          { type: "text", text: `📍 ที่อยู่: ${data.address.line}, ${data.address.subDistrict}, ${data.address.district}, ${data.address.province} ${data.address.postcode}` },
+          { type: "text", text: `🗓️ วันที่ลงทะเบียน: ${data.registeredAt}` },
+          { type: "text", text: `⏳ หมดประกัน: ${data.warrantyUntil}` },
+          { type: "separator", margin: "md" },
+          { type: "text", text: `📦 รายการสินค้า: ${orderData.productName}` },
+          { type: "text", text: `🗓️ วันที่สั่งซื้อ: ${formatDate(orderData.purchaseDate)}` }
+        ]
       }
     }
-  }
+  };
+}
 
-  res.sendStatus(200);
-});
-
-// ✅ ส่ง Firebase Config ไป frontend
-app.get("/api/firebase-config", (req, res) => {
-  res.json({
-    apiKey: process.env.FIREBASE_API_KEY,
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.FIREBASE_APP_ID,
-  });
-});
-
-// ✅ ส่ง LIFF ID ไป frontend
+// ✅ LIFF ID
 app.get("/api/liff-id", (req, res) => {
-  res.json({ liffId: process.env.LIFF_ADMIN_ID });
+  res.json({ liffId: process.env.LIFF_ID });
 });
 
-// ✅ ตรวจสอบว่า userId เป็นแอดมินหรือไม่
-app.post("/api/check-admin", (req, res) => {
-  const { userId } = req.body;
-  const adminList = process.env.ADMIN_USER_IDS.split(",").map(id => id.trim());
-  const isAdmin = adminList.includes(userId);
-  res.json({ isAdmin });
+// ✅ Save LINE user
+app.post("/api/user", async (req, res) => {
+  try {
+    const { userId, displayName, pictureUrl } = req.body;
+    if (!userId) return res.status(400).json({ message: "userId is required" });
+
+    await db.collection("users").doc(userId).set({
+      userId,
+      displayName,
+      pictureUrl,
+      lastSeen: admin.firestore.Timestamp.now()
+    }, { merge: true });
+
+    res.status(200).json({ message: "✅ บันทึกข้อมูลผู้ใช้เรียบร้อย" });
+  } catch (error) {
+    console.error("❌ Error saving user profile:", error);
+    res.status(500).json({ message: "ไม่สามารถบันทึกข้อมูลผู้ใช้ได้" });
+  }
 });
+
+// ✅ ดึงคำสั่งซื้อ
+app.get("/api/order/:orderId", async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+    const orderDoc = await db.collection("orders").doc(orderId).get();
+
+    if (!orderDoc.exists) {
+      return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
+    }
+
+    const data = orderDoc.data();
+    data.purchaseDateFormatted = formatDate(data.purchaseDate);
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error("❌ Error fetching order:", error);
+    return res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงคำสั่งซื้อ" });
+  }
+});
+
+// ✅ ลงทะเบียนสินค้า
+app.post("/api/register", async (req, res) => {
+  try {
+    const { userId, name, phone, email, orderId, address } = req.body;
+
+    const existing = await db.collection("registrations").doc(orderId).get();
+    if (existing.exists) {
+      return res.status(400).json({ message: "🔁 คำสั่งซื้อนี้ลงทะเบียนแล้ว" });
+    }
+
+    const orderDoc = await db.collection("orders").doc(orderId).get();
+    if (!orderDoc.exists) {
+      return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
+    }
+
+    const orderData = orderDoc.data();
+
+    const registeredAt = new Date();
+    const warrantyDays = 7;
+    const warrantyUntil = calculateWarrantyUntil(warrantyDays);
+
+    await db.collection("registrations").doc(orderId).set({
+      userId,
+      name,
+      phone,
+      email,
+      orderId,
+      address,
+      registeredAt: admin.firestore.Timestamp.fromDate(registeredAt),
+      warrantyUntil,
+    });
+
+    const flexMessage = createFlexMessage({
+      userId,
+      name,
+      phone,
+      email,
+      orderId,
+      address,
+      registeredAt: registeredAt.toISOString().split("T")[0],
+      warrantyUntil,
+    }, orderData);
+
+    await axios.post("https://api.line.me/v2/bot/message/push", {
+      to: userId,
+      messages: [flexMessage],
+    }, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+      },
+    });
+
+    res.status(200).json({ message: "✅ ลงทะเบียนสำเร็จ" });
+
+  } catch (error) {
+    console.error("❌ Error:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" });
+  }
+});
+
+// ✅ เคลมสินค้า
+app.post("/api/claim", async (req, res) => {
+  try {
+    const { userId, orderId, reason, contact } = req.body;
+
+    if (!userId || !orderId || !reason || !contact) {
+      return res.status(400).json({ message: "กรุณากรอกข้อมูลให้ครบถ้วน" });
+    }
+
+    const orderDoc = await db.collection("orders").doc(orderId).get();
+    if (!orderDoc.exists) {
+      return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
+    }
+
+    const regDoc = await db.collection("registrations").doc(orderId).get();
+    if (!regDoc.exists) {
+      return res.status(400).json({ message: "⛔ ยังไม่ได้ลงทะเบียนสินค้านี้" });
+    }
+
+    const regData = regDoc.data();
+    const warrantyUntil = new Date(regData.warrantyUntil);
+    const today = new Date();
+
+    if (today > warrantyUntil) {
+      return res.status(400).json({ message: `⚠️ หมดประกันวันที่ ${regData.warrantyUntil}` });
+    }
+
+    await db.collection("claims").add({
+      userId,
+      orderId,
+      reason,
+      contact,
+      status: "อยู่ระหว่างดำเนินการ",
+      claimedAt: admin.firestore.Timestamp.now()
+    });
+
+    const message = {
+      type: "text",
+      text: `📢 ระบบได้รับการแจ้งเคลมของคุณแล้ว\nคำสั่งซื้อ: ${orderId}\nเหตุผล: ${reason}\nทีมงานจะติดต่อกลับภายใน 1-2 วันทำการ`
+    };
+
+    await axios.post("https://api.line.me/v2/bot/message/push", {
+      to: userId,
+      messages: [message],
+    }, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+      },
+    });
+
+    res.status(200).json({ message: "✅ ส่งคำร้องเคลมสำเร็จ" });
+
+  } catch (error) {
+    console.error("❌ Error on /api/claim:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการแจ้งเคลม" });
+  }
+});
+
+// ✅ ตรวจสอบสถานะ
+app.get("/api/check-status/:orderId", async (req, res) => {
+  const orderId = req.params.orderId;
+
+  try {
+    const registrationDoc = await db.collection("registrations").doc(orderId).get();
+    const claimQuery = await db.collection("claims")
+      .where("orderId", "==", orderId)
+      .orderBy("claimedAt", "desc")
+      .limit(1)
+      .get();
+
+    const result = {
+      orderId,
+      registered: false,
+      claimed: false,
+    };
+
+    if (registrationDoc.exists) {
+      const reg = registrationDoc.data();
+      result.registered = true;
+      result.name = reg.name || "-";
+      result.warrantyUntil = reg.warrantyUntil || "-";
+      result.registeredAt = reg.registeredAt ? formatDate(reg.registeredAt) : "-";
+    }
+
+    if (!claimQuery.empty) {
+      const claim = claimQuery.docs[0].data();
+      result.claimed = true;
+      result.claimStatus = claim.status || "อยู่ระหว่างดำเนินการ";
+      result.claimDate = claim.claimedAt ? formatDate(claim.claimedAt) : "-";
+      result.reason = claim.reason || "-";
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("❌ Error on /api/check-status:", error);
+    return res.status(500).json({ message: "เกิดข้อผิดพลาดในการตรวจสอบสถานะ" });
+  }
+});
+
+// ✅ เปลี่ยนสถานะเคลมและแจ้งเตือน LINE
+app.post("/api/notify-status-change", async (req, res) => {
+  try {
+    const { claimId, newStatus } = req.body;
+
+    if (!claimId || !newStatus) {
+      return res.status(400).json({ message: "กรุณาระบุ claimId และ newStatus" });
+    }
+
+    const claimRef = db.collection("claims").doc(claimId);
+    const claimDoc = await claimRef.get();
+
+    if (!claimDoc.exists) {
+      return res.status(404).json({ message: "ไม่พบรายการเคลมนี้" });
+    }
+
+    const claimData = claimDoc.data();
+
+    // อัปเดตสถานะใหม่
+    await claimRef.update({
+      status: newStatus,
+      statusUpdatedAt: admin.firestore.Timestamp.now()
+    });
+
+    // ส่งข้อความแจ้งเตือนกลับไปยังลูกค้า
+    const message = {
+      type: "text",
+      text: `📦 สถานะการเคลมของคุณถูกอัปเดตแล้ว\nคำสั่งซื้อ: ${claimData.orderId}\nสถานะใหม่: ${newStatus}`
+    };
+
+    await axios.post("https://api.line.me/v2/bot/message/push", {
+      to: claimData.userId,
+      messages: [message],
+    }, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+      },
+    });
+
+    res.status(200).json({ message: "✅ อัปเดตสถานะและแจ้งเตือนสำเร็จ" });
+
+  } catch (error) {
+    console.error("❌ Error on /api/notify-status-change:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการอัปเดตสถานะ" });
+  }
+});
+
 
 // ✅ Start Server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
