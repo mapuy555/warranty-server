@@ -205,6 +205,32 @@ app.post("/api/claim", async (req, res) => {
       claimedAt: admin.firestore.Timestamp.now()
     });
 
+    // ✅ 2. ดึง claim ล่าสุดของ order/user นี้มาแจ้งแอดมิน
+const newClaimQuery = await db.collection("claims")
+  .where("userId", "==", userId)
+  .where("orderId", "==", orderId)
+  .orderBy("claimedAt", "desc")
+  .limit(1)
+  .get();
+
+if (!newClaimQuery.empty) {
+  const claimId = newClaimQuery.docs[0].id;
+
+  const adminFlex = createAdminClaimCard(
+    claimId, orderId, reason, "อยู่ระหว่างดำเนินการ"
+  );
+
+  await axios.post("https://api.line.me/v2/bot/message/push", {
+    to: process.env.ADMIN_LINE_USERID,
+    messages: [adminFlex]
+  }, {
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`
+    }
+  });
+}
+
     const messages = [
     {
       type: "text",
@@ -341,6 +367,128 @@ app.post("/api/notify-status-change", async (req, res) => {
   } catch (error) {
     console.error("❌ Error on /api/notify-status-change:", error);
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการอัปเดตสถานะ" });
+  }
+});
+
+function createAdminClaimCard(claimId, orderId, reason, status) {
+  return {
+    type: "flex",
+    altText: `รายการเคลม: ${orderId}`,
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          { type: "text", text: "📋 รายการเคลม", weight: "bold", size: "lg" },
+          { type: "text", text: `คำสั่งซื้อ: ${orderId}` },
+          { type: "text", text: `เหตุผล: ${reason}` },
+          { type: "text", text: `สถานะ: ${status}` },
+        ]
+      },
+      footer: {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            action: {
+              type: "postback",
+              label: "✅ เสร็จสิ้น",
+              data: `changeStatus|${claimId}|เคลมสำเร็จ`
+            }
+          },
+          {
+            type: "button",
+            style: "secondary",
+            action: {
+              type: "postback",
+              label: "❌ ปฏิเสธ",
+              data: `changeStatus|${claimId}|ไม่อนุมัติ`
+            }
+          }
+        ]
+      }
+    }
+  };
+}
+
+
+app.post("/webhook", async (req, res) => {
+  const events = req.body.events;
+
+  for (const event of events) {
+    if (event.type === "postback" && event.postback.data.startsWith("changeStatus")) {
+      const [_, claimId, newStatus] = event.postback.data.split("|");
+
+      try {
+        const claimRef = db.collection("claims").doc(claimId);
+        const claimDoc = await claimRef.get();
+        if (!claimDoc.exists) continue;
+
+        await claimRef.update({
+          status: newStatus,
+          statusUpdatedAt: admin.firestore.Timestamp.now(),
+        });
+
+        await axios.post("https://api.line.me/v2/bot/message/push", {
+          to: claimDoc.data().userId,
+          messages: [{ type: "text", text: `📦 สถานะการเคลมอัปเดต: ${newStatus}` }],
+        }, {
+          headers: {
+            Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        // แจ้งแอดมิน (ตอบกลับทันที)
+        await axios.post("https://api.line.me/v2/bot/message/reply", {
+          replyToken: event.replyToken,
+          messages: [{ type: "text", text: "✅ เปลี่ยนสถานะเรียบร้อย" }],
+        }, {
+          headers: {
+            Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+      } catch (err) {
+        console.error("❌ postback error:", err);
+      }
+    }
+  }
+
+  res.status(200).send("OK");
+});
+
+app.get("/api/send-admin-claims", async (req, res) => {
+  try {
+    const snapshot = await db.collection("claims")
+      .orderBy("claimedAt", "desc")
+      .limit(5)
+      .get();
+
+    const messages = [];
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      messages.push(createAdminClaimCard(doc.id, d.orderId, d.reason, d.status));
+    });
+
+    await axios.post("https://api.line.me/v2/bot/message/push", {
+      to: process.env.ADMIN_LINE_USERID,
+      messages: messages
+    }, {
+      headers: {
+        Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    res.status(200).json({ message: "✅ ส่งรายการให้แอดมินแล้ว" });
+  } catch (err) {
+    console.error("❌ Error sending admin claims:", err);
+    res.status(500).json({ message: "❌ ไม่สามารถส่งให้แอดมินได้" });
   }
 });
 
