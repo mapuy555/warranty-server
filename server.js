@@ -373,7 +373,7 @@ app.post("/api/notify-status-change", async (req, res) => {
 function createAdminClaimCard(claimId, orderId, reason, status) {
   return {
     type: "flex",
-    altText: `รายการเคลมจากลูกค้า`,
+    altText: `📦 รายการเคลมจากลูกค้า`,
     contents: {
       type: "bubble",
       body: {
@@ -397,7 +397,7 @@ function createAdminClaimCard(claimId, orderId, reason, status) {
             action: {
               type: "postback",
               label: "✅ เสร็จสิ้น",
-              data: changeStatus|${claimId}|done
+              data: `changeStatus|${claimId}|done` // ✅ fixed
             }
           },
           {
@@ -406,7 +406,7 @@ function createAdminClaimCard(claimId, orderId, reason, status) {
             action: {
               type: "postback",
               label: "กำลังดำเนินการ",
-              data: changeStatus|${claimId}|processing
+              data: `changeStatus|${claimId}|processing` // ✅ fixed
             }
           }
         ]
