@@ -30,12 +30,24 @@ function calculateWarrantyUntil(days) {
   return today.toISOString().split("T")[0];
 }
 function formatDate(dateField) {
-  try {
-    return dateField.toDate().toISOString().split("T")[0];
-  } catch {
-    return "-";
-  }
+    if (!dateField) return "-";
+    
+    // ตรวจสอบว่าเป็น Firestore Timestamp object หรือไม่
+    if (dateField instanceof admin.firestore.Timestamp) {
+        return dateField.toDate().toISOString().split("T")[0];
+    }
+    // ตรวจสอบว่าเป็น Date object หรือไม่
+    if (dateField instanceof Date) {
+        return dateField.toISOString().split("T")[0];
+    }
+    // หากเป็น String ที่เป็น ISO Date อยู่แล้ว (บางกรณี)
+    if (typeof dateField === 'string' && !isNaN(new Date(dateField))) {
+        return new Date(dateField).toISOString().split("T")[0];
+    }
+    
+    return "-"; // หากไม่ใช่รูปแบบที่คาดหวัง
 }
+
 function createFlexMessage(data, orderData) {
   return {
     type: "flex",
@@ -276,7 +288,10 @@ if (!newClaimQuery.empty) {
     res.status(200).json({ message: "✅ ส่งคำร้องเคลมสำเร็จ" });
 
   } catch (error) {
-    console.error("❌ Error on /api/claim:", error);
+    console.error("❌ Error on /api/claim:", error.response?.data || error.message || error);
+if (error.stack) {
+    console.error("Stack Trace:", error.stack);
+}
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการแจ้งเคลม" });
   }
 });
@@ -373,7 +388,7 @@ app.post("/api/notify-status-change", async (req, res) => {
 function createAdminClaimCard(claimId, orderId, reason, status) {
   return {
     type: "flex",
-    altText: `📦 รายการเคลมจากลูกค้า`,
+    altText: `📦 แจ้งเคลมสินค้า`,
     contents: {
       type: "bubble",
       body: {
@@ -417,50 +432,58 @@ function createAdminClaimCard(claimId, orderId, reason, status) {
 
 
 app.post("/webhook", async (req, res) => {
-  const events = req.body.events;
+    const events = req.body.events;
 
-  for (const event of events) {
-    if (event.type === "postback" && event.postback.data.startsWith("changeStatus")) {
-      const [_, claimId, newStatus] = event.postback.data.split("|");
+    // ประมวลผลทุก Event แบบขนาน
+    await Promise.all(events.map(async (event) => {
+        if (event.type === "postback" && event.postback.data.startsWith("changeStatus")) {
+            const [_, claimId, newStatus] = event.postback.data.split("|");
 
-      try {
-        const claimRef = db.collection("claims").doc(claimId);
-        const claimDoc = await claimRef.get();
-        if (!claimDoc.exists) continue;
+            try {
+                const claimRef = db.collection("claims").doc(claimId);
+                const claimDoc = await claimRef.get();
+                if (!claimDoc.exists) {
+                    console.warn(`Claim ${claimId} not found for postback.`);
+                    return; // ข้าม event นี้ไป
+                }
 
-        await claimRef.update({
-          status: newStatus,
-          statusUpdatedAt: admin.firestore.Timestamp.now(),
-        });
+                await claimRef.update({
+                    status: newStatus,
+                    statusUpdatedAt: admin.firestore.Timestamp.now(),
+                });
 
-        await axios.post("https://api.line.me/v2/bot/message/push", {
-          to: claimDoc.data().userId,
-          messages: [{ type: "text", text: `📦 สถานะการเคลมอัปเดต: ${newStatus}` }],
-        }, {
-          headers: {
-            Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-            "Content-Type": "application/json"
-          }
-        });
+                // แจ้งลูกค้า
+                await axios.post("https://api.line.me/v2/bot/message/push", {
+                    to: claimDoc.data().userId,
+                    messages: [{ type: "text", text: `📦 สถานะการเคลมอัปเดต: ${newStatus}` }],
+                }, {
+                    headers: {
+                        Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+                        "Content-Type": "application/json"
+                    }
+                });
 
-        // แจ้งแอดมิน (ตอบกลับทันที)
-        await axios.post("https://api.line.me/v2/bot/message/reply", {
-          replyToken: event.replyToken,
-          messages: [{ type: "text", text: "✅ เปลี่ยนสถานะเรียบร้อย" }],
-        }, {
-          headers: {
-            Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-            "Content-Type": "application/json"
-          }
-        });
+                // แจ้งแอดมิน (ตอบกลับทันที)
+                await axios.post("https://api.line.me/v2/bot/message/reply", {
+                    replyToken: event.replyToken,
+                    messages: [{ type: "text", text: "✅ เปลี่ยนสถานะเรียบร้อย" }],
+                }, {
+                    headers: {
+                        Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+                        "Content-Type": "application/json"
+                    }
+                });
 
-      } catch (err) {
-        console.error("❌ postback error:", err);
-      }
-    }
-  }
+            } catch (err) {
+                console.error("❌ postback error for claimId", claimId, ":", err.response?.data || err.message || err);
+                if (err.stack) {
+                    console.error("Stack Trace:", err.stack);
+                }
+            }
+        }
+    }));
 
-  res.status(200).send("OK");
+    res.status(200).send("OK");
 });
 
 app.get("/api/send-admin-claims", async (req, res) => {
