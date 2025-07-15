@@ -388,7 +388,8 @@ function createAdminClaimCard(claimId, orderId, reason, status) {
       },
       footer: {
         type: "box",
-        layout: "horizontal",
+        layout: "vertical",
+        spacing: "sm",
         contents: [
           {
             type: "button",
