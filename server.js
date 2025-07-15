@@ -82,7 +82,7 @@ function createAdminClaimCard(claimId, orderId, reason, status) {
       },
       footer: {
         type: "box",
-        layout: "horizontal",
+        layout: "vertical",
         contents: [
           {
             type: "button",
@@ -256,7 +256,7 @@ app.post("/api/claim", async (req, res) => {
       const adminFlex = createAdminClaimCard(claimId, orderId, reason, "อยู่ระหว่างดำเนินการ");
 
       await axios.post("https://api.line.me/v2/bot/message/push", {
-        to: process.env.ADMIN_LINE_USERID,
+        to: process.env.ADMIN_USER_IDS,
         messages: [adminFlex]
       }, {
         headers: {
