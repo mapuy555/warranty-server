@@ -396,7 +396,7 @@ function createAdminClaimCard(claimId, orderId, reason, status) {
             action: {
               type: "postback",
               label: "✅ เสร็จสิ้น",
-              data: `changeStatus|${claimId}|เคลมสำเร็จ`
+              data: `changeStatus|${claimId}|เสร็จสิ้น`
             }
           },
           {
@@ -404,8 +404,8 @@ function createAdminClaimCard(claimId, orderId, reason, status) {
             style: "secondary",
             action: {
               type: "postback",
-              label: "❌ ปฏิเสธ",
-              data: `changeStatus|${claimId}|ไม่อนุมัติ`
+              label: "กำลังดำเนินการ",
+              data: `changeStatus|${claimId}|อยู่ระหว่างดำเนินการ`
             }
           }
         ]
