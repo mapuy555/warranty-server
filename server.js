@@ -96,9 +96,12 @@ app.post("/api/user", async (req, res) => {
 
     res.status(200).json({ message: "✅ บันทึกข้อมูลผู้ใช้เรียบร้อย" });
   } catch (error) {
-    console.error("❌ Error saving user profile:", error);
-    res.status(500).json({ message: "ไม่สามารถบันทึกข้อมูลผู้ใช้ได้" });
-  }
+    console.error(`❌ Error on ${req.originalUrl || 'unknown path'}:`, error.response?.data || error.message || error);
+    if (error.stack) {
+        console.error("Stack Trace:", error.stack);
+    }
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" }); // หรือข้อความเฉพาะเจาะจงที่เหมาะสมกับ Endpoint นั้นๆ
+}
 });
 
 // ✅ ดึงคำสั่งซื้อ
@@ -115,9 +118,12 @@ app.get("/api/order/:orderId", async (req, res) => {
     data.purchaseDateFormatted = formatDate(data.purchaseDate);
     return res.status(200).json(data);
   } catch (error) {
-    console.error("❌ Error fetching order:", error);
-    return res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงคำสั่งซื้อ" });
-  }
+    console.error(`❌ Error on ${req.originalUrl || 'unknown path'}:`, error.response?.data || error.message || error);
+    if (error.stack) {
+        console.error("Stack Trace:", error.stack);
+    }
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" }); // หรือข้อความเฉพาะเจาะจงที่เหมาะสมกับ Endpoint นั้นๆ
+}
 });
 
 // ✅ ลงทะเบียนสินค้า
@@ -176,9 +182,12 @@ app.post("/api/register", async (req, res) => {
     res.status(200).json({ message: "✅ ลงทะเบียนสำเร็จ" });
 
   } catch (error) {
-    console.error("❌ Error on /api/claim:", error.response?.data || error.message || error);
-    res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" });
-  }
+    console.error(`❌ Error on ${req.originalUrl || 'unknown path'}:`, error.response?.data || error.message || error);
+    if (error.stack) {
+        console.error("Stack Trace:", error.stack);
+    }
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" }); // หรือข้อความเฉพาะเจาะจงที่เหมาะสมกับ Endpoint นั้นๆ
+}
 });
 
 // ✅ เคลมสินค้า
@@ -332,9 +341,12 @@ app.get("/api/check-status/:orderId", async (req, res) => {
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error("❌ Error on /api/check-status:", error);
-    return res.status(500).json({ message: "เกิดข้อผิดพลาดในการตรวจสอบสถานะ" });
-  }
+    console.error(`❌ Error on ${req.originalUrl || 'unknown path'}:`, error.response?.data || error.message || error);
+    if (error.stack) {
+        console.error("Stack Trace:", error.stack);
+    }
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" }); // หรือข้อความเฉพาะเจาะจงที่เหมาะสมกับ Endpoint นั้นๆ
+}
 });
 
 // ✅ เปลี่ยนสถานะเคลมและแจ้งเตือน LINE
@@ -380,9 +392,12 @@ app.post("/api/notify-status-change", async (req, res) => {
     res.status(200).json({ message: "✅ อัปเดตสถานะและแจ้งเตือนสำเร็จ" });
 
   } catch (error) {
-    console.error("❌ Error on /api/notify-status-change:", error);
-    res.status(500).json({ message: "เกิดข้อผิดพลาดในการอัปเดตสถานะ" });
-  }
+    console.error(`❌ Error on ${req.originalUrl || 'unknown path'}:`, error.response?.data || error.message || error);
+    if (error.stack) {
+        console.error("Stack Trace:", error.stack);
+    }
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" }); // หรือข้อความเฉพาะเจาะจงที่เหมาะสมกับ Endpoint นั้นๆ
+}
 });
 
 function createAdminClaimCard(claimId, orderId, reason, status) {
@@ -510,10 +525,13 @@ app.get("/api/send-admin-claims", async (req, res) => {
     });
 
     res.status(200).json({ message: "✅ ส่งรายการให้แอดมินแล้ว" });
-  } catch (err) {
-    console.error("❌ Error sending admin claims:", err);
-    res.status(500).json({ message: "❌ ไม่สามารถส่งให้แอดมินได้" });
-  }
+  } catch (error) {
+    console.error(`❌ Error on ${req.originalUrl || 'unknown path'}:`, error.response?.data || error.message || error);
+    if (error.stack) {
+        console.error("Stack Trace:", error.stack);
+    }
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" }); // หรือข้อความเฉพาะเจาะจงที่เหมาะสมกับ Endpoint นั้นๆ
+}
 });
 
 
