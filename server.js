@@ -215,7 +215,12 @@ app.get("/api/check-status/:orderId", async (req, res) => {
   try {
     const orderId = req.params.orderId;
 
+    console.log("🔍 เข้ามาเช็คสถานะ orderId:", orderId);
+    
     const regDoc = await db.collection("registrations").doc(orderId).get();
+
+    console.log("📦 ตรวจสอบ registration:", orderId, "=> exists:", regDoc.exists);
+
     const claimsQuery = await db.collection("claims")
       .where("orderId", "==", orderId)
       .orderBy("claimedAt", "desc")
