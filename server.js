@@ -96,6 +96,7 @@ function createAdminClaimCard(claimId, orderId, reason, status) {
           {
             type: "button",
             style: "secondary",
+            margin: "md",
             action: {
               type: "postback",
               label: "❌ ปฏิเสธ",
@@ -208,6 +209,35 @@ app.post("/api/register", async (req, res) => {
     res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" });
   }
 });
+
+// ✅ ตรวจสอบสถานะลงทะเบียนและเคลม
+app.get("/api/check-status/:orderId", async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+
+    const regDoc = await db.collection("registrations").doc(orderId).get();
+    const claimsQuery = await db.collection("claims")
+      .where("orderId", "==", orderId)
+      .orderBy("claimedAt", "desc")
+      .get();
+
+    const registration = regDoc.exists ? regDoc.data() : null;
+    const claims = [];
+    claimsQuery.forEach(doc => {
+      claims.push({ id: doc.id, ...doc.data() });
+    });
+
+    if (!registration && claims.length === 0) {
+      return res.status(404).json({ message: "ไม่พบข้อมูล" });
+    }
+
+    return res.status(200).json({ registration, claims });
+  } catch (error) {
+    console.error("❌ Error on /api/check-status:", error);
+    return res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" });
+  }
+});
+
 
 // ✅ เคลมสินค้า
 app.post("/api/claim", async (req, res) => {

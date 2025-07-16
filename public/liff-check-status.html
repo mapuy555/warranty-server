@@ -50,45 +50,56 @@
   <script>
     const apiBase = "https://warranty-api-umg2.onrender.com";
 
-    async function checkStatus() {
-      const orderId = document.getElementById("orderId").value.trim();
-      const errorMsg = document.getElementById("errorMsg");
-      const resultBox = document.getElementById("resultBox");
+   async function checkStatus() {
+  const orderId = document.getElementById("orderId").value.trim();
+  const errorMsg = document.getElementById("errorMsg");
+  const resultBox = document.getElementById("resultBox");
 
-      if (!orderId) {
-        errorMsg.textContent = "❌ กรุณากรอกเลขคำสั่งซื้อ";
-        return;
-      }
+  if (!orderId) {
+    errorMsg.textContent = "❌ กรุณากรอกเลขคำสั่งซื้อ";
+    return;
+  }
 
-      errorMsg.textContent = "";
-      resultBox.style.display = "none";
-      resultBox.innerHTML = "⏳ กำลังตรวจสอบ...";
+  errorMsg.textContent = "";
+  resultBox.style.display = "none";
+  resultBox.innerHTML = "⏳ กำลังตรวจสอบ...";
 
-      try {
-        const res = await fetch(`${apiBase}/api/check-status/${orderId}`);
-        if (!res.ok) throw new Error("ไม่พบข้อมูล");
+  try {
+    const res = await fetch(`${apiBase}/api/check-status/${orderId}`);
+    if (!res.ok) throw new Error("ไม่พบข้อมูล");
 
-        const data = await res.json();
-        let html = `<strong>เลขคำสั่งซื้อ:</strong> ${data.orderId}<br/>`;
+    const data = await res.json();
+    let html = `<strong>เลขคำสั่งซื้อ:</strong> ${orderId}<br/>`;
 
-        if (data.registered) {
-          html += `✅ ลงทะเบียนแล้วเมื่อ: ${data.registeredAt}<br/>⏳ หมดประกัน: ${data.warrantyUntil}<br/>`;
-        } else {
-          html += `⚠️ ยังไม่ลงทะเบียนรับประกัน<br/>`;
-        }
-
-        if (data.claimed) {
-          html += `🔧 เคยแจ้งเคลมแล้ว<br/>📅 วันที่เคลม: ${data.claimDate}<br/>📌 สถานะ: ${data.claimStatus}<br/>`;
-        } else {
-          html += `📭 ยังไม่เคยเคลมสินค้า<br/>`;
-        }
-
-        resultBox.innerHTML = html;
-        resultBox.style.display = "block";
-      } catch (err) {
-        errorMsg.textContent = "❌ ไม่พบข้อมูล กรุณาตรวจสอบเลขคำสั่งซื้ออีกครั้ง";
-      }
+    if (data.registration) {
+      html += `✅ ลงทะเบียนแล้วเมื่อ: ${formatDate(data.registration.registeredAt)}<br/>`;
+      html += `⏳ หมดประกัน: ${data.registration.warrantyUntil}<br/>`;
+    } else {
+      html += `⚠️ ยังไม่ลงทะเบียนรับประกัน<br/>`;
     }
+
+    if (data.claims && data.claims.length > 0) {
+      const latestClaim = data.claims[0]; // เอาเคลมล่าสุด
+      html += `🔧 เคยแจ้งเคลมแล้ว<br/>📅 วันที่เคลม: ${formatDate(latestClaim.claimedAt)}<br/>📌 สถานะ: ${latestClaim.status}<br/>`;
+    } else {
+      html += `📭 ยังไม่เคยเคลมสินค้า<br/>`;
+    }
+
+    resultBox.innerHTML = html;
+    resultBox.style.display = "block";
+  } catch (err) {
+    errorMsg.textContent = "❌ ไม่พบข้อมูล กรุณาตรวจสอบเลขคำสั่งซื้ออีกครั้ง";
+  }
+}
+
+function formatDate(ts) {
+  try {
+    return new Date(ts._seconds * 1000).toISOString().split("T")[0];
+  } catch {
+    return "-";
+  }
+}
+
   </script>
 </body>
 </html>
