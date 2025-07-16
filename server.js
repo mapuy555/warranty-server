@@ -64,42 +64,66 @@ function createFlexMessage(data, orderData) {
   };
 }
 
-function createAdminClaimCard(claimId, orderId, reason, status) {
+function createAdminClaimCard(claimId, orderId, reason, status, claimedAt, contact) {
   return {
     type: "flex",
     altText: `รายการเคลม: ${orderId}`,
     contents: {
       type: "bubble",
+      size: "mega",
       body: {
         type: "box",
         layout: "vertical",
+        spacing: "md",
         contents: [
-          { type: "text", text: "📋 รายการเคลม", weight: "bold", size: "lg" },
-          { type: "text", text: `คำสั่งซื้อ: ${orderId}` },
-          { type: "text", text: `เหตุผล: ${reason}` },
-          { type: "text", text: `สถานะ: ${status}` },
+          {
+            type: "text",
+            text: "📋 รายการแจ้งเคลม",
+            weight: "bold",
+            size: "xl",
+            color: "#1DB446"
+          },
+          {
+            type: "separator",
+            margin: "sm"
+          },
+          {
+            type: "box",
+            layout: "vertical",
+            spacing: "sm",
+            margin: "md",
+            contents: [
+              { type: "text", text: `🆔 คำสั่งซื้อ: ${orderId}`, size: "sm", wrap: true },
+              { type: "text", text: `👤 ผู้แจ้ง: ${contact}`, size: "sm", wrap: true },
+              { type: "text", text: `📅 วันที่แจ้ง: ${claimedAt}`, size: "sm" },
+              { type: "text", text: `📌 เหตุผล: ${reason}`, size: "sm", wrap: true },
+              { type: "text", text: `📦 สถานะ: ${status}`, size: "sm", color: "#FF6F00" }
+            ]
+          }
         ]
       },
       footer: {
         type: "box",
         layout: "vertical",
+        spacing: "sm",
         contents: [
           {
             type: "button",
             style: "primary",
+            color: "#06C755", // เขียว LINE
             action: {
               type: "postback",
-              label: "✅ เสร็จสิ้น",
+              label: "✅ เคลมสำเร็จ",
               data: `changeStatus|${claimId}|เคลมสำเร็จ`
             }
           },
           {
             type: "button",
             style: "secondary",
-            margin: "md",
+            color: "#DD2C00", // แดง
             action: {
               type: "postback",
-              label: "❌ ปฏิเสธ",
+              label: "❌ ไม่อนุมัติ",
               data: `changeStatus|${claimId}|ไม่อนุมัติ`
             }
           }
@@ -108,6 +132,7 @@ function createAdminClaimCard(claimId, orderId, reason, status) {
     }
   };
 }
+
 
 // ✅ LIFF ID
 app.get("/api/liff-id", (req, res) => {
@@ -216,7 +241,7 @@ app.get("/api/check-status/:orderId", async (req, res) => {
     const orderId = req.params.orderId;
 
     console.log("🔍 เข้ามาเช็คสถานะ orderId:", orderId);
-    
+
     const regDoc = await db.collection("registrations").doc(orderId).get();
 
     console.log("📦 ตรวจสอบ registration:", orderId, "=> exists:", regDoc.exists);
@@ -287,8 +312,15 @@ app.post("/api/claim", async (req, res) => {
       .get();
 
     if (!newClaimQuery.empty) {
+      const claimDoc = newClaimQuery.docs[0];
       const claimId = newClaimQuery.docs[0].id;
-      const adminFlex = createAdminClaimCard(claimId, orderId, reason, "อยู่ระหว่างดำเนินการ");
+
+      const claimData = claimDoc.data();
+      const claimedAtDate = claimData.claimedAt.toDate(); // ✅ แปลงเป็น Date
+      const claimedAtStr = claimedAtDate.toISOString().split("T")[0]; // ✅ แปลงเป็น string วันที่ เช่น 2025-07-16
+
+      const adminFlex = createAdminClaimCard(claimId, orderId, reason, "อยู่ระหว่างดำเนินการ", claimedAtStr, contact);
+
 
       await axios.post("https://api.line.me/v2/bot/message/push", {
         to: process.env.ADMIN_USER_IDS,
@@ -340,11 +372,78 @@ app.post("/api/claim", async (req, res) => {
   }
 });
 
+async function handleSendClaimList(replyToken) {
+  try {
+    const snapshot = await db.collection("claims")
+      .orderBy("claimedAt", "desc")
+      .limit(10)
+      .get();
+
+    if (snapshot.empty) {
+      await axios.post("https://api.line.me/v2/bot/message/reply", {
+        replyToken,
+        messages: [{ type: "text", text: "📭 ไม่มีรายการเคลมในระบบ" }]
+      }, {
+        headers: {
+          "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+          "Content-Type": "application/json"
+        }
+      });
+      return;
+    }
+
+    const bubbles = [];
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      const claimedAtStr = d.claimedAt.toDate().toISOString().split("T")[0];
+      const card = createAdminClaimCard(doc.id, d.orderId, d.reason, d.status, claimedAtStr, d.contact);
+      bubbles.push(card.contents);
+    });
+
+    const carousel = {
+      type: "flex",
+      altText: "📋 รายการเคลมล่าสุด",
+      contents: {
+        type: "carousel",
+        contents: bubbles
+      }
+    };
+
+    await axios.post("https://api.line.me/v2/bot/message/reply", {
+      replyToken,
+      messages: [carousel]
+    }, {
+      headers: {
+        "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+  } catch (err) {
+    console.error("❌ Error in handleSendClaimList:", err);
+  }
+}
+
+
 // ✅ webhook สำหรับ postback จาก LINE
 app.post("/webhook", async (req, res) => {
   const events = req.body.events;
 
   for (const event of events) {
+    // ✅ 1. รับข้อความจากแอดมิน เช่น "ดูรายการเคลม"
+    if (event.type === "message" && event.message.type === "text") {
+      const userMessage = event.message.text.trim();
+      const userId = event.source.userId;
+
+      if (process.env.ADMIN_USER_IDS.split(",").includes(userId)) {
+        if (userMessage === "ดูรายการเคลม" || userMessage.toLowerCase() === "claim list") {
+          await handleSendClaimList(event.replyToken);
+          continue;
+        }
+      }
+    }
+
+    // ✅ 2. เมื่อแอดมินกด postback เปลี่ยนสถานะ
     if (event.type === "postback" && event.postback.data.startsWith("changeStatus")) {
       const [_, claimId, newStatus] = event.postback.data.split("|");
 
@@ -358,6 +457,7 @@ app.post("/webhook", async (req, res) => {
           statusUpdatedAt: admin.firestore.Timestamp.now(),
         });
 
+        // แจ้งกลับผู้ใช้
         await axios.post("https://api.line.me/v2/bot/message/push", {
           to: claimDoc.data().userId,
           messages: [{ type: "text", text: `📦 สถานะการเคลมอัปเดต: ${newStatus}` }]
@@ -368,6 +468,7 @@ app.post("/webhook", async (req, res) => {
           }
         });
 
+        // ตอบกลับแอดมิน
         await axios.post("https://api.line.me/v2/bot/message/reply", {
           replyToken: event.replyToken,
           messages: [{ type: "text", text: "✅ เปลี่ยนสถานะเรียบร้อย" }]
@@ -386,6 +487,7 @@ app.post("/webhook", async (req, res) => {
 
   res.status(200).send("OK");
 });
+
 
 // ✅ Start Server
 app.listen(PORT, () => {
