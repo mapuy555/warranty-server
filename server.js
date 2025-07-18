@@ -463,7 +463,7 @@ app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
         name: row["ชื่อผู้รับ"] || "",
         productName: row["ชื่อสินค้า"] || "",
         status: row["สถานะคำสั่งซื้อ"] || "",
-        purchaseDate: parseExcelDate(row["วันที่จัดส่งสำเร็จ"]),
+        purchaseDate: parseExcelDate(row["เวลาที่ทำการสั่งซื้อสำเร็จ"]),
 
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
