@@ -361,13 +361,24 @@ app.patch("/api/claims/:id/status", async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
+  console.log("📦 PATCH /api/claims/:id/status", { id, status });
+
   try {
-    await db.collection("claims").doc(id).update({ status });
+    const docRef = db.collection("claims").doc(id);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) {
+      return res.status(404).json({ message: "ไม่พบรายการเคลมนี้" });
+    }
+
+    await docRef.update({ status });
     res.json({ message: "✅ อัปเดตสถานะเรียบร้อย" });
   } catch (err) {
+    console.error("❌ PATCH status error:", err);
     res.status(500).json({ message: "❌ อัปเดตสถานะไม่สำเร็จ" });
   }
 });
+
 
 app.get("/api/registrations", async (req, res) => {
   try {

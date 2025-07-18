@@ -15,7 +15,7 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- ตารางการลงทะเบียน -->
+      <!-- รายการลงทะเบียน -->
       <div>
         <h2 class="text-lg font-semibold mb-2">📦 รายการลงทะเบียนสินค้า</h2>
         <table class="w-full text-sm border border-gray-300 bg-white">
@@ -33,7 +33,7 @@
         </table>
       </div>
 
-      <!-- ตารางเคลม -->
+      <!-- รายการเคลม -->
       <div>
         <h2 class="text-lg font-semibold mb-2">📋 รายการแจ้งเคลม</h2>
         <table class="w-full text-sm border border-gray-300 bg-white">
@@ -54,18 +54,22 @@
 
     <p id="status" class="mt-4 text-center text-blue-600"></p>
   </div>
+
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
+    // 🔐 โหลด config จาก backend
     const res = await fetch("https://warranty-api-umg2.onrender.com/api/firebase-config");
     const firebaseConfig = await res.json();
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    const allowedAdmins = ["admin1@example.com", "admin2@example.com"]; // ใส่อีเมลแอดมินที่นี่
+    // ✅ รายชื่อแอดมินที่เข้าระบบได้
+    const allowedAdmins = ["suphatraprayurkha@gmail.com"];
 
+    // 🔐 ตรวจสอบสิทธิ์ก่อนแสดงข้อมูล
     onAuthStateChanged(auth, (user) => {
       if (!user) {
         window.location.href = "admin-login.html";
@@ -82,8 +86,10 @@
       }
     });
 
+    // 🔻 ฟังก์ชัน logout
     window.logout = () => signOut(auth);
 
+    // ✅ โหลดข้อมูลลงทะเบียน
     async function loadRegistrations() {
       const res = await fetch("https://warranty-api-umg2.onrender.com/api/registrations");
       const data = await res.json();
@@ -105,6 +111,7 @@
       });
     }
 
+    // ✅ โหลดข้อมูลการเคลม
     async function loadClaims() {
       const res = await fetch("https://warranty-api-umg2.onrender.com/api/claims");
       const data = await res.json();
@@ -120,9 +127,9 @@
             <td class="border px-2 py-1">${date}</td>
             <td class="border px-2 py-1">
               <select id="status-${item.id}" class="border rounded px-1 py-0.5 text-sm">
-                <option>อยู่ระหว่างดำเนินการ</option>
-                <option>เคลมสำเร็จ</option>
-                <option>ไม่อนุมัติ</option>
+                <option${item.status === 'อยู่ระหว่างดำเนินการ' ? ' selected' : ''}>อยู่ระหว่างดำเนินการ</option>
+                <option${item.status === 'เคลมสำเร็จ' ? ' selected' : ''}>เคลมสำเร็จ</option>
+                <option${item.status === 'ไม่อนุมัติ' ? ' selected' : ''}>ไม่อนุมัติ</option>
               </select>
               <button onclick="updateStatus('${item.id}')" class="ml-1 text-blue-600">✔</button>
             </td>
@@ -133,6 +140,7 @@
       });
     }
 
+    // ✅ เปลี่ยนสถานะการเคลม
     async function updateStatus(claimId) {
       const newStatus = document.getElementById(`status-${claimId}`).value;
       const res = await fetch(`https://warranty-api-umg2.onrender.com/api/claims/${claimId}/status`, {
@@ -145,6 +153,7 @@
       loadClaims();
     }
 
+    // ✅ ลบรายการเคลม
     async function deleteClaim(id) {
       if (!confirm("⚠️ ลบรายการเคลมนี้?")) return;
       const res = await fetch(`https://warranty-api-umg2.onrender.com/api/claims/${id}`, { method: "DELETE" });
@@ -153,6 +162,7 @@
       loadClaims();
     }
 
+    // ✅ ลบรายการลงทะเบียน
     async function deleteRegistration(orderId) {
       if (!confirm("⚠️ ลบรายการลงทะเบียนนี้?")) return;
       const res = await fetch(`https://warranty-api-umg2.onrender.com/api/registrations/${orderId}`, { method: "DELETE" });
@@ -161,6 +171,7 @@
       loadRegistrations();
     }
 
+    // ✅ format วันที่
     function formatDate(fbTimestamp) {
       try {
         const d = fbTimestamp.seconds ? new Date(fbTimestamp.seconds * 1000) : new Date(fbTimestamp);
@@ -170,5 +181,63 @@
       }
     }
   </script>
+  <script>
+  // 🔄 เปลี่ยนสถานะเคลม
+  async function updateStatus(claimId, newStatus) {
+    try {
+      const res = await fetch(`https://warranty-api-umg2.onrender.com/api/claims/${claimId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (!res.ok) throw new Error("อัปเดตไม่สำเร็จ");
+      alert("✅ เปลี่ยนสถานะสำเร็จ");
+      location.reload();
+    } catch (err) {
+      alert("❌ เปลี่ยนสถานะไม่สำเร็จ");
+      console.error(err);
+    }
+  }
+
+  // 🗑️ ลบเคลม
+  async function deleteClaim(claimId) {
+    if (!confirm("❗ ยืนยันลบรายการนี้?")) return;
+
+    try {
+      const res = await fetch(`https://warranty-api-umg2.onrender.com/api/claims/${claimId}`, {
+        method: "DELETE"
+      });
+
+      if (!res.ok) throw new Error("ลบไม่สำเร็จ");
+      alert("✅ ลบรายการเคลมสำเร็จ");
+      location.reload();
+    } catch (err) {
+      alert("❌ ลบไม่สำเร็จ");
+      console.error(err);
+    }
+  }
+
+  // 🗑️ ลบการลงทะเบียน
+  async function deleteRegistration(orderId) {
+    if (!confirm("❗ ยืนยันลบรายการนี้?")) return;
+
+    try {
+      const res = await fetch(`https://warranty-api-umg2.onrender.com/api/registrations/${orderId}`, {
+        method: "DELETE"
+      });
+
+      if (!res.ok) throw new Error("ลบไม่สำเร็จ");
+      alert("✅ ลบรายการลงทะเบียนสำเร็จ");
+      location.reload();
+    } catch (err) {
+      alert("❌ ลบไม่สำเร็จ");
+      console.error(err);
+    }
+  }
+</script>
+
 </body>
 </html>
