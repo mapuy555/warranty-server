@@ -37,6 +37,14 @@ function formatDate(dateField) {
   }
 }
 function createFlexMessage(data, orderData) {
+  const itemTexts = orderData.items?.map(item => {
+    return {
+      type: "text",
+      text: `• ${item.productName} (${item.quantity || 1} ชิ้น)`,
+      wrap: true
+    };
+  }) || [];
+
   return {
     type: "flex",
     altText: "ลงทะเบียนสำเร็จ ✅",
@@ -56,13 +64,15 @@ function createFlexMessage(data, orderData) {
           { type: "text", text: `🗓️ วันที่ลงทะเบียน: ${data.registeredAt}` },
           { type: "text", text: `⏳ หมดประกัน: ${data.warrantyUntil}` },
           { type: "separator", margin: "md" },
-          { type: "text", text: `📦 รายการสินค้า: ${orderData.productName}` },
+          { type: "text", text: `📦 รายการสินค้า:` },
+          ...itemTexts,
           { type: "text", text: `🗓️ วันที่สั่งซื้อ: ${formatDate(orderData.purchaseDate)}` }
         ]
       }
     }
   };
 }
+
 
 function createAdminClaimCard(claimId, orderId, reason, status, claimedAt, contact) {
   return {
@@ -454,19 +464,41 @@ app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
       const orderRef = db.collection("orders").doc(orderId);
       const existing = await orderRef.get();
       if (existing.exists) {
-        skipped++;
-        continue;
-      }
+  const existingData = existing.data();
+  const newItem = {
+    productName: row["ชื่อสินค้า"] || "",
+    quantity: row["จำนวน"] || 1,
+    sku: row["เลขอ้างอิง SKU (SKU Reference No.)"] || "",
+    price: row["ราคาขาย"] || 0,
+  };
+
+  // อัปเดตเข้า array items เดิม โดยใช้ arrayUnion เพื่อไม่ให้ซ้ำ
+  await orderRef.update({
+    items: admin.firestore.FieldValue.arrayUnion(newItem)
+  });
+
+  skipped++; // นับว่าอัปเดต ไม่ได้เพิ่มใหม่
+  continue;
+}
+
 
       await orderRef.set({
-        orderId,
-        name: row["ชื่อผู้รับ"] || "",
-        productName: row["ชื่อสินค้า"] || "",
-        status: row["สถานะคำสั่งซื้อ"] || "",
-        purchaseDate: parseExcelDate(row["เวลาที่ทำการสั่งซื้อสำเร็จ"]),
+  orderId,
+  name: row["ชื่อผู้รับ"] || "",
+  status: row["สถานะคำสั่งซื้อ"] || "",
+  purchaseDate: parseExcelDate(row["วันที่ทำการสั่งซื้อสำเร็จ"]),
+  items: [
+    {
+      productName: row["ชื่อสินค้า"] || "",
+      quantity: row["จำนวน"] || 1,
+      sku: row["เลขอ้างอิง SKU (SKU Reference No.)"] || "",
+      price: row["ราคาขาย"] || 0,
+    }
+  ],
+  createdAt: admin.firestore.FieldValue.serverTimestamp()
+});
 
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+
 
       added++;
     }
@@ -517,6 +549,20 @@ app.post("/api/notify-status-change", async (req, res) => {
   } catch (err) {
     console.error("❌ Error on /api/notify-status-change:", err);
     res.status(500).json({ message: "❌ ไม่สามารถแจ้งเตือนสถานะได้" });
+  }
+});
+
+app.get("/api/registrations/:orderId", async (req, res) => {
+  const { orderId } = req.params;
+  try {
+    const doc = await db.collection("registrations").doc(orderId).get();
+    if (doc.exists) {
+      res.json({ registered: true, data: doc.data() });
+    } else {
+      res.json({ registered: false });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
   }
 });
 

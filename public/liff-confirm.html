@@ -81,21 +81,37 @@
     document.getElementById("address").innerText = `${data.address.line}, ${data.address.subDistrict}, ${data.address.district}, ${data.address.province} ${data.address.postcode}`;
 
     // ดึงรายละเอียดคำสั่งซื้อ
-    async function fetchOrderDetails(orderId) {
-      try {
-        const res = await fetch(`${apiBase}/api/order/${orderId}`);
-        if (!res.ok) throw new Error("ไม่พบคำสั่งซื้อ กรุณาตรวจสอบเลขคำสั่งซื้ออีกครั้ง");
+ async function fetchOrderDetails(orderId) {
+  try {
+    const res = await fetch(`${apiBase}/api/order/${orderId}`);
+    if (!res.ok) throw new Error("ไม่พบคำสั่งซื้อ กรุณาตรวจสอบเลขคำสั่งซื้ออีกครั้ง");
 
-        const order = await res.json();
-        document.getElementById("product").innerText = order.productName || "-";
-        document.getElementById("purchaseDate").innerText =
-          order.purchaseDate? new Date(order.purchaseDate._seconds * 1000).toLocaleDateString("th-TH") : "-";
-      } catch (err) {
-        errorMsg.innerText = err.message || "⚠️ เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า";
-        document.getElementById("product").innerText = "-";
-        document.getElementById("purchaseDate").innerText = "-";
-      }
+    const order = await res.json();
+
+    // ✅ แสดงสินค้าหลายรายการ
+    const productEl = document.getElementById("product");
+    if (Array.isArray(order.items)) {
+      productEl.innerHTML = "<ul style='padding-left: 20px; margin: 0;'>";
+      order.items.forEach(item => {
+        productEl.innerHTML += `<li>${item.productName} (${item.quantity || 1} ชิ้น)</li>`;
+      });
+      productEl.innerHTML += "</ul>";
+    } else {
+      productEl.innerText = "-";
     }
+
+    // ✅ แสดงวันที่
+    document.getElementById("purchaseDate").innerText =
+      order.purchaseDate ? new Date(order.purchaseDate._seconds * 1000).toLocaleDateString("th-TH") : "-";
+  } catch (err) {
+    errorMsg.innerText = err.message || "⚠️ เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า";
+    document.getElementById("product").innerText = "-";
+    document.getElementById("purchaseDate").innerText = "-";
+  }
+}
+
+checkIfAlreadyRegistered(data.orderId);
+
 
     fetchOrderDetails(data.orderId);
 
@@ -132,6 +148,24 @@
     document.getElementById("editBtn").addEventListener("click", () => {
       history.back();
     });
+
+async function checkIfAlreadyRegistered(orderId) {
+  try {
+    const res = await fetch(`${apiBase}/api/registrations/${orderId}`);
+    if (res.ok) {
+      const result = await res.json();
+      if (result && result.registered) {
+        errorMsg.innerText = "⚠️ คำสั่งซื้อนี้ได้ลงทะเบียนไปแล้ว";
+        confirmBtn.disabled = true;
+        confirmBtn.style.backgroundColor = "#aaa";
+      }
+    }
+  } catch (err) {
+    console.error("เกิดข้อผิดพลาดในการตรวจสอบการลงทะเบียน:", err);
+  }
+}
+
+
   </script>
 </body>
 </html>
