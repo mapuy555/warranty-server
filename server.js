@@ -438,13 +438,20 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 function parseExcelDate(value) {
   if (!value) return null;
+
   if (typeof value === "number") {
-    // Excel serial number → JS Date
     return new Date(Math.round((value - 25569) * 86400 * 1000));
   }
+
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(value)) {
+    const iso = value.replace(" ", "T") + ":00"; // ➜ ISO format
+    return new Date(iso);
+  }
+
   const parsed = new Date(value);
   return isNaN(parsed.getTime()) ? null : parsed;
 }
+
 
 
 app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
@@ -486,7 +493,7 @@ app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
   orderId,
   name: row["ชื่อผู้รับ"] || "",
   status: row["สถานะคำสั่งซื้อ"] || "",
-  purchaseDate: parseExcelDate(row["วันที่ทำการสั่งซื้อสำเร็จ"]),
+  purchaseDate: parseExcelDate(row["เวลาการชำระสินค้า"]),
   items: [
     {
       productName: row["ชื่อสินค้า"] || "",
