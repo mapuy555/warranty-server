@@ -2,89 +2,173 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin Dashboard - ลงทะเบียนสินค้า</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-  <style>
-    body { font-family: "Segoe UI", sans-serif; background: #fff; color: #000; padding: 20px; max-width: 1200px; margin: auto; }
-    h2 { margin-bottom: 10px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
-    th { background: #eee; }
-    input, select, button { padding: 8px; margin: 5px 0; font-size: 14px; }
-    #detailsModal { display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:#fff; padding:20px; border:1px solid #ccc; box-shadow:0 2px 10px rgba(0,0,0,0.2); z-index:1000; max-width:500px; }
-    #overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:999; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h2>📋 รายการลงทะเบียนสินค้า</h2>
-  <input type="text" id="searchInput" placeholder="ค้นหาคำสั่งซื้อหรือชื่อผู้ใช้" oninput="loadRegistrations()" />
-  <div id="registrationsTable"></div>
+<body class="bg-gray-100 p-4 font-sans">
 
-  <div id="overlay"></div>
-  <div id="detailsModal">
-    <h3>รายละเอียดสินค้า</h3>
-    <div id="modalContent"></div>
-    <button onclick="closeModal()">ปิด</button>
+  <div class="max-w-7xl mx-auto">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold text-green-700">📊 Admin Dashboard</h1>
+      <div id="admin-info" class="text-sm text-gray-600"></div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- ตารางการลงทะเบียน -->
+      <div>
+        <h2 class="text-lg font-semibold mb-2">📦 รายการลงทะเบียนสินค้า</h2>
+        <table class="w-full text-sm border border-gray-300 bg-white">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="border px-2 py-1">Order ID</th>
+              <th class="border px-2 py-1">ชื่อ</th>
+              <th class="border px-2 py-1">เบอร์</th>
+              <th class="border px-2 py-1">วันที่</th>
+              <th class="border px-2 py-1">หมดประกัน</th>
+              <th class="border px-2 py-1">ลบ</th>
+            </tr>
+          </thead>
+          <tbody id="registrationTable"></tbody>
+        </table>
+      </div>
+
+      <!-- ตารางเคลม -->
+      <div>
+        <h2 class="text-lg font-semibold mb-2">📋 รายการแจ้งเคลม</h2>
+        <table class="w-full text-sm border border-gray-300 bg-white">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="border px-2 py-1">Order ID</th>
+              <th class="border px-2 py-1">เหตุผล</th>
+              <th class="border px-2 py-1">สถานะ</th>
+              <th class="border px-2 py-1">วันที่</th>
+              <th class="border px-2 py-1">เปลี่ยนสถานะ</th>
+              <th class="border px-2 py-1">ลบ</th>
+            </tr>
+          </thead>
+          <tbody id="claimTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <p id="status" class="mt-4 text-center text-blue-600"></p>
   </div>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
-  <script>
-    const firebaseConfig = await (await fetch("https://warranty-api-umg2.onrender.com/api/firebase-config")).json();
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    const res = await fetch("https://warranty-api-umg2.onrender.com/api/firebase-config");
+    const firebaseConfig = await res.json();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const allowedAdmins = ["admin1@example.com", "admin2@example.com"]; // ใส่อีเมลแอดมินที่นี่
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "admin-login.html";
+      } else if (!allowedAdmins.includes(user.email)) {
+        alert("⛔ คุณไม่มีสิทธิ์ใช้งานหน้านี้");
+        signOut(auth);
+      } else {
+        document.getElementById("admin-info").innerHTML = `
+          👤 ${user.email}
+          <button onclick="logout()" class="text-red-500 ml-2 underline">ออกจากระบบ</button>
+        `;
+        loadRegistrations();
+        loadClaims();
+      }
+    });
+
+    window.logout = () => signOut(auth);
 
     async function loadRegistrations() {
-      const search = document.getElementById("searchInput").value.trim().toLowerCase();
-      const snapshot = await db.collection("registrations").orderBy("registeredAt", "desc").limit(50).get();
-      let html = `<table><thead><tr>
-        <th>ชื่อ</th><th>เบอร์</th><th>อีเมล</th><th>คำสั่งซื้อ</th><th>ลงทะเบียนเมื่อ</th><th>หมดประกัน</th><th>ดูรายละเอียด</th>
-      </tr></thead><tbody>`;
-
-      snapshot.forEach(doc => {
-        const d = doc.data();
-        if (search && !(
-          d.name.toLowerCase().includes(search) ||
-          d.orderId.toLowerCase().includes(search))) return;
-
-        const regDate = d.registeredAt?.toDate().toISOString().split("T")[0];
-        html += `<tr>
-          <td>${d.name}</td>
-          <td>${d.phone}</td>
-          <td>${d.email}</td>
-          <td>${d.orderId}</td>
-          <td>${regDate}</td>
-          <td>${d.warrantyUntil || '-'}</td>
-          <td><button onclick='showDetails(${JSON.stringify(d).replace(/"/g, "&quot;")})'>ดูรายละเอียด</button></td>
-        </tr>`;
+      const res = await fetch("https://warranty-api-umg2.onrender.com/api/registrations");
+      const data = await res.json();
+      const table = document.getElementById("registrationTable");
+      table.innerHTML = "";
+      data.registrations.forEach(item => {
+        const date = formatDate(item.registeredAt);
+        table.innerHTML += `
+          <tr>
+            <td class="border px-2 py-1">${item.orderId}</td>
+            <td class="border px-2 py-1">${item.name}</td>
+            <td class="border px-2 py-1">${item.phone}</td>
+            <td class="border px-2 py-1">${date}</td>
+            <td class="border px-2 py-1">${item.warrantyUntil}</td>
+            <td class="border px-2 py-1">
+              <button onclick="deleteRegistration('${item.orderId}')" class="text-red-600">🗑️</button>
+            </td>
+          </tr>`;
       });
-
-      html += `</tbody></table>`;
-      document.getElementById("registrationsTable").innerHTML = html;
     }
 
-    window.showDetails = function(data) {
-      const html = `
-        <p><strong>ชื่อ:</strong> ${data.name}</p>
-        <p><strong>เบอร์:</strong> ${data.phone}</p>
-        <p><strong>อีเมล:</strong> ${data.email}</p>
-        <p><strong>คำสั่งซื้อ:</strong> ${data.orderId}</p>
-        <p><strong>ลงทะเบียนเมื่อ:</strong> ${data.registeredAt?.toDate?.().toISOString().split("T")[0] || '-'}</p>
-        <p><strong>หมดประกัน:</strong> ${data.warrantyUntil || '-'}</p>
-        <p><strong>ที่อยู่:</strong><br> ${data.address?.line}, ${data.address?.subDistrict}, ${data.address?.district}, ${data.address?.province} ${data.address?.postcode}</p>
-      `;
-      document.getElementById("modalContent").innerHTML = html;
-      document.getElementById("overlay").style.display = 'block';
-      document.getElementById("detailsModal").style.display = 'block';
+    async function loadClaims() {
+      const res = await fetch("https://warranty-api-umg2.onrender.com/api/claims");
+      const data = await res.json();
+      const table = document.getElementById("claimTable");
+      table.innerHTML = "";
+      data.claims.forEach(item => {
+        const date = formatDate(item.claimedAt);
+        table.innerHTML += `
+          <tr>
+            <td class="border px-2 py-1">${item.orderId}</td>
+            <td class="border px-2 py-1">${item.reason}</td>
+            <td class="border px-2 py-1">${item.status}</td>
+            <td class="border px-2 py-1">${date}</td>
+            <td class="border px-2 py-1">
+              <select id="status-${item.id}" class="border rounded px-1 py-0.5 text-sm">
+                <option>อยู่ระหว่างดำเนินการ</option>
+                <option>เคลมสำเร็จ</option>
+                <option>ไม่อนุมัติ</option>
+              </select>
+              <button onclick="updateStatus('${item.id}')" class="ml-1 text-blue-600">✔</button>
+            </td>
+            <td class="border px-2 py-1">
+              <button onclick="deleteClaim('${item.id}')" class="text-red-600">🗑️</button>
+            </td>
+          </tr>`;
+      });
     }
 
-    function closeModal() {
-      document.getElementById("overlay").style.display = 'none';
-      document.getElementById("detailsModal").style.display = 'none';
+    async function updateStatus(claimId) {
+      const newStatus = document.getElementById(`status-${claimId}`).value;
+      const res = await fetch(`https://warranty-api-umg2.onrender.com/api/claims/${claimId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const result = await res.json();
+      document.getElementById("status").innerText = result.message || "อัปเดตแล้ว";
+      loadClaims();
     }
 
-    loadRegistrations();
+    async function deleteClaim(id) {
+      if (!confirm("⚠️ ลบรายการเคลมนี้?")) return;
+      const res = await fetch(`https://warranty-api-umg2.onrender.com/api/claims/${id}`, { method: "DELETE" });
+      const result = await res.json();
+      document.getElementById("status").innerText = result.message || "ลบแล้ว";
+      loadClaims();
+    }
+
+    async function deleteRegistration(orderId) {
+      if (!confirm("⚠️ ลบรายการลงทะเบียนนี้?")) return;
+      const res = await fetch(`https://warranty-api-umg2.onrender.com/api/registrations/${orderId}`, { method: "DELETE" });
+      const result = await res.json();
+      document.getElementById("status").innerText = result.message || "ลบแล้ว";
+      loadRegistrations();
+    }
+
+    function formatDate(fbTimestamp) {
+      try {
+        const d = fbTimestamp.seconds ? new Date(fbTimestamp.seconds * 1000) : new Date(fbTimestamp);
+        return d.toISOString().split("T")[0];
+      } catch {
+        return "-";
+      }
+    }
   </script>
 </body>
 </html>

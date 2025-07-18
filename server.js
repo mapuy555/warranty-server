@@ -102,33 +102,7 @@ function createAdminClaimCard(claimId, orderId, reason, status, claimedAt, conta
           }
         ]
       },
-      footer: {
-        type: "box",
-        layout: "vertical",
-        spacing: "sm",
-        contents: [
-          {
-            type: "button",
-            style: "primary",
-            color: "#06C755", // เขียว LINE
-            action: {
-              type: "postback",
-              label: "✅ เคลมสำเร็จ",
-              data: `changeStatus|${claimId}|เคลมสำเร็จ`
-            }
-          },
-          {
-            type: "button",
-            style: "secondary",
-            color: "#DD2C00", // แดง
-            action: {
-              type: "postback",
-              label: "❌ ไม่อนุมัติ",
-              data: `changeStatus|${claimId}|ไม่อนุมัติ`
-            }
-          }
-        ]
-      }
+    
     }
   };
 }
@@ -321,7 +295,8 @@ app.post("/api/claim", async (req, res) => {
 
       const adminFlex = createAdminClaimCard(claimId, orderId, reason, "อยู่ระหว่างดำเนินการ", claimedAtStr, contact);
 
-
+// ส่งหาแอดมิน — ไม่ใช้แล้ว
+/*
       await axios.post("https://api.line.me/v2/bot/message/push", {
         to: process.env.ADMIN_USER_IDS,
         messages: [adminFlex]
@@ -330,7 +305,7 @@ app.post("/api/claim", async (req, res) => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`
         }
-      });
+      });*/
     }
 
     const messages = [
@@ -372,121 +347,57 @@ app.post("/api/claim", async (req, res) => {
   }
 });
 
-async function handleSendClaimList(replyToken) {
+app.get("/api/claims", async (req, res) => {
   try {
-    const snapshot = await db.collection("claims")
-      .orderBy("claimedAt", "desc")
-      .limit(10)
-      .get();
-
-    if (snapshot.empty) {
-      await axios.post("https://api.line.me/v2/bot/message/reply", {
-        replyToken,
-        messages: [{ type: "text", text: "📭 ไม่มีรายการเคลมในระบบ" }]
-      }, {
-        headers: {
-          "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-          "Content-Type": "application/json"
-        }
-      });
-      return;
-    }
-
-    const bubbles = [];
-    snapshot.forEach(doc => {
-      const d = doc.data();
-      const claimedAtStr = d.claimedAt.toDate().toISOString().split("T")[0];
-      const card = createAdminClaimCard(doc.id, d.orderId, d.reason, d.status, claimedAtStr, d.contact);
-      bubbles.push(card.contents);
-    });
-
-    const carousel = {
-      type: "flex",
-      altText: "📋 รายการเคลมล่าสุด",
-      contents: {
-        type: "carousel",
-        contents: bubbles
-      }
-    };
-
-    await axios.post("https://api.line.me/v2/bot/message/reply", {
-      replyToken,
-      messages: [carousel]
-    }, {
-      headers: {
-        "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-        "Content-Type": "application/json"
-      }
-    });
-
+    const snapshot = await db.collection("claims").orderBy("claimedAt", "desc").get();
+    const claims = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json({ claims });
   } catch (err) {
-    console.error("❌ Error in handleSendClaimList:", err);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูลการเคลม" });
   }
-}
-
-
-// ✅ webhook สำหรับ postback จาก LINE
-app.post("/webhook", async (req, res) => {
-  const events = req.body.events;
-
-  for (const event of events) {
-    // ✅ 1. รับข้อความจากแอดมิน เช่น "ดูรายการเคลม"
-    if (event.type === "message" && event.message.type === "text") {
-      const userMessage = event.message.text.trim();
-      const userId = event.source.userId;
-
-      if (process.env.ADMIN_USER_IDS.split(",").includes(userId)) {
-        if (userMessage === "ดูรายการเคลม" || userMessage.toLowerCase() === "claim list") {
-          await handleSendClaimList(event.replyToken);
-          continue;
-        }
-      }
-    }
-
-    // ✅ 2. เมื่อแอดมินกด postback เปลี่ยนสถานะ
-    if (event.type === "postback" && event.postback.data.startsWith("changeStatus")) {
-      const [_, claimId, newStatus] = event.postback.data.split("|");
-
-      try {
-        const claimRef = db.collection("claims").doc(claimId);
-        const claimDoc = await claimRef.get();
-        if (!claimDoc.exists) continue;
-
-        await claimRef.update({
-          status: newStatus,
-          statusUpdatedAt: admin.firestore.Timestamp.now(),
-        });
-
-        // แจ้งกลับผู้ใช้
-        await axios.post("https://api.line.me/v2/bot/message/push", {
-          to: claimDoc.data().userId,
-          messages: [{ type: "text", text: `📦 สถานะการเคลมอัปเดต: ${newStatus}` }]
-        }, {
-          headers: {
-            "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-            "Content-Type": "application/json"
-          }
-        });
-
-        // ตอบกลับแอดมิน
-        await axios.post("https://api.line.me/v2/bot/message/reply", {
-          replyToken: event.replyToken,
-          messages: [{ type: "text", text: "✅ เปลี่ยนสถานะเรียบร้อย" }]
-        }, {
-          headers: {
-            "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-            "Content-Type": "application/json"
-          }
-        });
-
-      } catch (err) {
-        console.error("❌ postback error:", err);
-      }
-    }
-  }
-
-  res.status(200).send("OK");
 });
+
+app.patch("/api/claims/:id/status", async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  try {
+    await db.collection("claims").doc(id).update({ status });
+    res.json({ message: "✅ อัปเดตสถานะเรียบร้อย" });
+  } catch (err) {
+    res.status(500).json({ message: "❌ อัปเดตสถานะไม่สำเร็จ" });
+  }
+});
+
+app.get("/api/registrations", async (req, res) => {
+  try {
+    const snapshot = await db.collection("registrations").orderBy("registeredAt", "desc").get();
+    const registrations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json({ registrations });
+  } catch (err) {
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูลลงทะเบียน" });
+  }
+});
+
+app.delete("/api/claims/:id", async (req, res) => {
+  try {
+    await db.collection("claims").doc(req.params.id).delete();
+    res.json({ message: "✅ ลบรายการเคลมสำเร็จ" });
+  } catch (err) {
+    res.status(500).json({ message: "❌ ลบไม่สำเร็จ" });
+  }
+});
+
+app.delete("/api/registrations/:orderId", async (req, res) => {
+  try {
+    await db.collection("registrations").doc(req.params.orderId).delete();
+    res.json({ message: "✅ ลบรายการลงทะเบียนสำเร็จ" });
+  } catch (err) {
+    res.status(500).json({ message: "❌ ลบไม่สำเร็จ" });
+  }
+});
+
+
 
 // ✅ API ส่ง firebaseConfig แบบปลอดภัย (ไม่ใส่ key ลับ)
 app.get("/api/firebase-config", (req, res) => {
@@ -498,6 +409,54 @@ app.get("/api/firebase-config", (req, res) => {
     messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.FIREBASE_APP_ID
   });
+});
+
+const multer = require("multer");
+const XLSX = require("xlsx");
+const upload = multer({ storage: multer.memoryStorage() });
+
+app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
+  try {
+    const buffer = req.file.buffer;
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    let added = 0;
+    let skipped = 0;
+
+    for (const row of data) {
+      const orderId = row["หมายเลขคำสั่งซื้อ"];
+      if (!orderId) continue;
+
+      const orderRef = db.collection("orders").doc(orderId);
+      const existing = await orderRef.get();
+      if (existing.exists) {
+        skipped++;
+        continue;
+      }
+
+      await orderRef.set({
+        orderId,
+        name: row["ชื่อผู้รับ"] || "",
+        productName: row["ชื่อสินค้า"] || "",
+        status: row["สถานะคำสั่งซื้อ"] || "",
+        purchaseDate: row["วันที่จัดส่งสำเร็จ"]
+          ? new Date(row["วันที่จัดส่งสำเร็จ"])
+          : null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      added++;
+    }
+
+    res.status(200).json({
+      message: `✅ อัปโหลดแล้ว ${added} รายการ, ⏩ ข้าม ${skipped} รายการ (ซ้ำ)`
+    });
+  } catch (error) {
+    console.error("❌ Error uploading orders:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการอัปโหลดคำสั่งซื้อ" });
+  }
 });
 
 

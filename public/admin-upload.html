@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>อัปโหลดคำสั่งซื้อ Shopee</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6 font-sans">
+  <div class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-md">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-green-600">📥 อัปโหลดคำสั่งซื้อ Shopee (.xlsx)</h2>
+      <div id="admin-info" class="text-sm text-gray-600"></div>
+    </div>
+
+    <input type="file" id="excelFile" accept=".xlsx" class="block w-full mb-4 border p-2 rounded" />
+    <button onclick="uploadFile()" class="w-full bg-green-500 hover:bg-green-600 text-white p-2 rounded">
+      ✅ อัปโหลดไฟล์
+    </button>
+    <p id="status" class="mt-4 text-sm text-blue-600"></p>
+  </div>
+
+  <div class="max-w-5xl mx-auto mt-10">
+    <h3 class="text-lg font-semibold mb-2">📋 รายการคำสั่งซื้อที่มีอยู่</h3>
+    <table class="w-full text-sm border border-gray-300">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="border px-2 py-1">#</th>
+          <th class="border px-2 py-1">รหัสคำสั่งซื้อ</th>
+          <th class="border px-2 py-1">ชื่อผู้รับ</th>
+          <th class="border px-2 py-1">สินค้า</th>
+          <th class="border px-2 py-1">สถานะ</th>
+          <th class="border px-2 py-1">วันที่จัดส่ง</th>
+        </tr>
+      </thead>
+      <tbody id="orderTable" class="bg-white"></tbody>
+    </table>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+  <!-- SheetJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <script type="module">
+    // 🔐 โหลด Firebase Config จาก API
+    const response = await fetch("https://warranty-api-umg2.onrender.com/api/firebase-config");
+    const firebaseConfig = await response.json();
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // 🔐 ตรวจว่า login อยู่หรือไม่
+    auth.onAuthStateChanged((user) => {
+      if (!user) {
+        window.location.href = "admin-login.html";
+      } else {
+        document.getElementById("admin-info").innerHTML = `
+          👤 ${user.email}
+          <button onclick="logout()" class="text-red-500 ml-2 underline">ออกจากระบบ</button>
+        `;
+        loadOrders(); // โหลดข้อมูลคำสั่งซื้อทันที
+      }
+    });
+
+    window.logout = () => {
+      auth.signOut();
+    };
+
+    // 📤 อัปโหลดไฟล์ .xlsx ไปยัง API
+    window.uploadFile = async () => {
+      const file = document.getElementById("excelFile").files[0];
+      const status = document.getElementById("status");
+      if (!file) return alert("📂 กรุณาเลือกไฟล์ .xlsx");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      status.innerText = "⏳ กำลังอัปโหลด...";
+      try {
+        const res = await fetch("https://warranty-api-umg2.onrender.com/api/upload-orders", {
+          method: "POST",
+          body: formData
+        });
+        const result = await res.json();
+        if (res.ok) {
+          status.innerText = "✅ " + result.message;
+          loadOrders(); // โหลดข้อมูลใหม่
+        } else {
+          status.innerText = "❌ " + result.message;
+        }
+      } catch (err) {
+        console.error(err);
+        status.innerText = "❌ ไม่สามารถเชื่อมต่อ API ได้";
+      }
+    };
+
+    // 📄 โหลดข้อมูลคำสั่งซื้อจาก Firestore
+    async function loadOrders() {
+      const table = document.getElementById("orderTable");
+      table.innerHTML = "";
+      const snapshot = await db.collection("orders").orderBy("createdAt", "desc").limit(50).get();
+      let i = 1;
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        const date = d.purchaseDate ? new Date(d.purchaseDate.seconds * 1000).toISOString().split("T")[0] : "-";
+        table.innerHTML += `
+          <tr>
+            <td class="border px-2 py-1 text-center">${i++}</td>
+            <td class="border px-2 py-1">${d.orderId || "-"}</td>
+            <td class="border px-2 py-1">${d.name || "-"}</td>
+            <td class="border px-2 py-1">${d.productName || "-"}</td>
+            <td class="border px-2 py-1">${d.status || "-"}</td>
+            <td class="border px-2 py-1">${date}</td>
+          </tr>
+        `;
+      });
+    }
+  </script>
+</body>
+</html>
