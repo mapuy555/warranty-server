@@ -492,7 +492,7 @@ app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
       await orderRef.set({
   orderId,
   name: row["ชื่อผู้รับ"] || "",
-  status: row["สถานะคำสั่งซื้อ"] || "",
+  status: row["สถานะการสั่งซื้อ"] || "",
   purchaseDate: parseExcelDate(row["เวลาการชำระสินค้า"]),
   items: [
     {
