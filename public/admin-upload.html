@@ -99,26 +99,38 @@
     };
 
     // 📄 โหลดข้อมูลคำสั่งซื้อจาก Firestore
-    async function loadOrders() {
-      const table = document.getElementById("orderTable");
-      table.innerHTML = "";
-      const snapshot = await db.collection("orders").orderBy("createdAt", "desc").limit(50).get();
-      let i = 1;
-      snapshot.forEach(doc => {
-        const d = doc.data();
-        const date = d.purchaseDate ? new Date(d.purchaseDate.seconds * 1000).toISOString().split("T")[0] : "-";
-        table.innerHTML += `
-          <tr>
-            <td class="border px-2 py-1 text-center">${i++}</td>
-            <td class="border px-2 py-1">${d.orderId || "-"}</td>
-            <td class="border px-2 py-1">${d.name || "-"}</td>
-            <td class="border px-2 py-1">${d.productName || "-"}</td>
-            <td class="border px-2 py-1">${d.status || "-"}</td>
-            <td class="border px-2 py-1">${date}</td>
-          </tr>
-        `;
+async function loadOrders() {
+  const table = document.getElementById("orderTable");
+  table.innerHTML = "";
+  const snapshot = await db.collection("orders").orderBy("createdAt", "desc").limit(50).get();
+  let i = 1;
+  snapshot.forEach(doc => {
+    const d = doc.data();
+    const date = d.purchaseDate ? new Date(d.purchaseDate.seconds * 1000).toLocaleDateString("th-TH") : "-";
+
+    // ✅ แสดงสินค้าหลายรายการ
+    let itemsHtml = "-";
+    if (Array.isArray(d.items)) {
+      itemsHtml = "<ul class='list-disc pl-4'>";
+      d.items.forEach(item => {
+        itemsHtml += `<li>${item.productName || "-"} (${item.quantity || 1} ชิ้น)</li>`;
       });
+      itemsHtml += "</ul>";
     }
+
+    table.innerHTML += `
+      <tr>
+        <td class="border px-2 py-1 text-center align-top">${i++}</td>
+        <td class="border px-2 py-1 align-top">${d.orderId || "-"}</td>
+        <td class="border px-2 py-1 align-top">${d.name || "-"}</td>
+        <td class="border px-2 py-1">${itemsHtml}</td>
+        <td class="border px-2 py-1 align-top">${d.status || "-"}</td>
+        <td class="border px-2 py-1 align-top">${date}</td>
+      </tr>
+    `;
+  });
+}
+
   </script>
 </body>
 </html>
