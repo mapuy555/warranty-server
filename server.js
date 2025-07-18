@@ -426,6 +426,17 @@ const multer = require("multer");
 const XLSX = require("xlsx");
 const upload = multer({ storage: multer.memoryStorage() });
 
+function parseExcelDate(value) {
+  if (!value) return null;
+  if (typeof value === "number") {
+    // Excel serial number → JS Date
+    return new Date(Math.round((value - 25569) * 86400 * 1000));
+  }
+  const parsed = new Date(value);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+
 app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
   try {
     const buffer = req.file.buffer;
@@ -452,9 +463,8 @@ app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
         name: row["ชื่อผู้รับ"] || "",
         productName: row["ชื่อสินค้า"] || "",
         status: row["สถานะคำสั่งซื้อ"] || "",
-        purchaseDate: row["วันที่จัดส่งสำเร็จ"]
-          ? new Date(row["วันที่จัดส่งสำเร็จ"])
-          : null,
+        purchaseDate: parseExcelDate(row["วันที่จัดส่งสำเร็จ"]),
+
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
