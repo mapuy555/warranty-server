@@ -141,17 +141,29 @@
     }
 
     // ✅ เปลี่ยนสถานะการเคลม
-    async function updateStatus(claimId) {
-      const newStatus = document.getElementById(`status-${claimId}`).value;
-      const res = await fetch(`https://warranty-api-umg2.onrender.com/api/claims/${claimId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus })
-      });
-      const result = await res.json();
-      document.getElementById("status").innerText = result.message || "อัปเดตแล้ว";
-      loadClaims();
-    }
+    window.updateStatus = async function (claimId) {
+  const newStatus = document.getElementById(`status-${claimId}`).value;
+
+  // 1. PATCH เปลี่ยนสถานะใน Firestore
+  const patchRes = await fetch(`https://warranty-api-umg2.onrender.com/api/claims/${claimId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: newStatus })
+  });
+  const patchResult = await patchRes.json();
+
+  // 2. POST แจ้งเตือนกลับผู้ใช้
+  await fetch("https://warranty-api-umg2.onrender.com/api/notify-status-change", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ claimId, status: newStatus })
+  });
+
+  document.getElementById("status").innerText = patchResult.message || "อัปเดตแล้ว";
+  loadClaims();
+};
+
+
 
     // ✅ ลบรายการเคลม
     async function deleteClaim(id) {
@@ -181,63 +193,8 @@
       }
     }
   </script>
-  <script>
-  // 🔄 เปลี่ยนสถานะเคลม
-  async function updateStatus(claimId, newStatus) {
-    try {
-      const res = await fetch(`https://warranty-api-umg2.onrender.com/api/claims/${claimId}/status`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (!res.ok) throw new Error("อัปเดตไม่สำเร็จ");
-      alert("✅ เปลี่ยนสถานะสำเร็จ");
-      location.reload();
-    } catch (err) {
-      alert("❌ เปลี่ยนสถานะไม่สำเร็จ");
-      console.error(err);
-    }
-  }
-
-  // 🗑️ ลบเคลม
-  async function deleteClaim(claimId) {
-    if (!confirm("❗ ยืนยันลบรายการนี้?")) return;
-
-    try {
-      const res = await fetch(`https://warranty-api-umg2.onrender.com/api/claims/${claimId}`, {
-        method: "DELETE"
-      });
-
-      if (!res.ok) throw new Error("ลบไม่สำเร็จ");
-      alert("✅ ลบรายการเคลมสำเร็จ");
-      location.reload();
-    } catch (err) {
-      alert("❌ ลบไม่สำเร็จ");
-      console.error(err);
-    }
-  }
-
-  // 🗑️ ลบการลงทะเบียน
-  async function deleteRegistration(orderId) {
-    if (!confirm("❗ ยืนยันลบรายการนี้?")) return;
-
-    try {
-      const res = await fetch(`https://warranty-api-umg2.onrender.com/api/registrations/${orderId}`, {
-        method: "DELETE"
-      });
-
-      if (!res.ok) throw new Error("ลบไม่สำเร็จ");
-      alert("✅ ลบรายการลงทะเบียนสำเร็จ");
-      location.reload();
-    } catch (err) {
-      alert("❌ ลบไม่สำเร็จ");
-      console.error(err);
-    }
-  }
-</script>
+ 
+  
 
 </body>
 </html>

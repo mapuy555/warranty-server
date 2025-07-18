@@ -470,6 +470,46 @@ app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
   }
 });
 
+// ✅ แจ้งเตือนสถานะเคลมผ่าน Flex Message
+app.post("/api/notify-status-change", async (req, res) => {
+  try {
+    const { claimId, status } = req.body;
+
+    const claimDoc = await db.collection("claims").doc(claimId).get();
+    if (!claimDoc.exists) {
+      return res.status(404).json({ message: "ไม่พบรายการเคลม" });
+    }
+
+    const claimData = claimDoc.data();
+    const { userId, orderId, reason, claimedAt, contact } = claimData;
+
+    const claimedAtStr = claimedAt.toDate().toISOString().split("T")[0];
+
+    const flex = createAdminClaimCard(claimId, orderId, reason, status, claimedAtStr, contact);
+
+    await axios.post("https://api.line.me/v2/bot/message/push", {
+      to: userId,
+      messages: [
+        {
+          type: "text",
+          text: `📢 สถานะการเคลมของคุณถูกอัปเดตเป็น: ${status}`
+        },
+        flex
+      ]
+    }, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`
+      }
+    });
+
+    res.status(200).json({ message: "📤 แจ้งเตือนสำเร็จ" });
+  } catch (err) {
+    console.error("❌ Error on /api/notify-status-change:", err);
+    res.status(500).json({ message: "❌ ไม่สามารถแจ้งเตือนสถานะได้" });
+  }
+});
+
 
 // ✅ Start Server
 app.listen(PORT, () => {
