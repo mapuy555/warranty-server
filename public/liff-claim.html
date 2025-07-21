@@ -84,17 +84,26 @@
     }
 
     async function initLIFF() {
-      const liffId = await getLiffId();
-      await liff.init({ liffId });
+      try {
+        const liffId = await getLiffId();
+        console.log("✅ ได้ LIFF ID:", liffId);
+        await liff.init({ liffId });
 
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return;
+        if (!liff.isLoggedIn()) {
+          console.log("🟡 ยังไม่ login → ไป login");
+          liff.login();
+          return;
+        }
+
+        const profile = await liff.getProfile();
+        userId = profile.userId;
+        document.getElementById("lineName").innerText = `👤 คุณ: ${profile.displayName}`;
+        console.log("✅ ได้ profile:", profile);
+
+      } catch (err) {
+        console.error("❌ เกิดข้อผิดพลาดใน initLIFF:", err);
+        document.getElementById("lineName").innerText = "❌ ไม่สามารถโหลดผู้ใช้ กรุณาเปิดในแอป LINE";
       }
-
-      const profile = await liff.getProfile();
-      userId = profile.userId;
-      document.getElementById("lineName").innerText = `👤 คุณ: ${profile.displayName}`;
     }
 
     document.addEventListener("DOMContentLoaded", () => {
