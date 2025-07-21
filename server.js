@@ -573,6 +573,17 @@ app.get("/api/registrations/:orderId", async (req, res) => {
   }
 });
 
+// ✅ สำหรับหน้า register
+app.get("/api/liff-id-register", (req, res) => {
+  res.json({ liffId: process.env.LIFF_ID_REGISTER });
+});
+
+// ✅ สำหรับหน้า claim
+app.get("/api/liff-id-claim", (req, res) => {
+  res.json({ liffId: process.env.LIFF_ID_CLAIM });
+});
+
+
 //fihfrrji
 // ✅ Start Server
 app.listen(PORT, () => {

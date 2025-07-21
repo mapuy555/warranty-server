@@ -78,7 +78,7 @@
     let userId = "";
 
     async function getLiffId() {
-      const res = await fetch(`${apiBase}/api/liff-id`);
+      const res = await fetch(`${apiBase}/api/liff-id-claim`);
       const data = await res.json();
       return data.liffId;
     }
