@@ -171,7 +171,14 @@ app.post("/api/register", async (req, res) => {
       return res.status(400).json({ message: "🔁 คำสั่งซื้อนี้ลงทะเบียนแล้ว" });
     }
 
-    const orderDoc = await db.collection("orders").doc(orderId).get();
+    // 🔍 ลองค้นหาใน orders
+    let orderDoc = await db.collection("orders").doc(orderId).get();
+
+    // 🔁 ถ้ายังไม่เจอ ลองใน orders_tiktok
+    if (!orderDoc.exists) {
+      orderDoc = await db.collection("orders_tiktok").doc(orderId).get();
+    }
+
     if (!orderDoc.exists) {
       return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
     }
@@ -218,6 +225,7 @@ app.post("/api/register", async (req, res) => {
     res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" });
   }
 });
+
 
 // ✅ ตรวจสอบสถานะลงทะเบียนและเคลม
 app.get("/api/check-status/:orderId", async (req, res) => {
