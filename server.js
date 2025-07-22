@@ -624,7 +624,7 @@ app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) =>
         if (!isNaN(d)) purchaseDate = admin.firestore.Timestamp.fromDate(d);
       }
 
-      const ref = db.collection("orders").doc(orderId);
+      const ref = db.collection("orders_tiktok").doc(orderId);
       const orderData = {
         orderId,
         name,
