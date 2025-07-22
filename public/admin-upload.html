@@ -5,18 +5,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>อัปโหลดคำสั่งซื้อ Shopee</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+  :root {
+    --shopee-orange: #ee4d2d;
+    --shopee-dark: #333;
+    --shopee-light: #f7f7f7;
+    --shopee-blue: #25f4ee;
+  }  
+</style>
 </head>
-<body class="bg-gray-100 p-8 font-sans text-gray-800">
+
+<body class="bg-[var(--shopee-light)] p-8 font-sans text-[var(--shopee-dark)]">
   <!-- 🔝 Navigation Bar -->
-<nav class="bg-white shadow-md px-6 py-3 rounded-xl max-w-6xl mx-auto mb-6 flex justify-between items-center">
-  <div class="text-lg font-bold text-green-600">📦 ระบบจัดการรับประกัน</div>
+<nav class="bg-[var(--shopee-orange)] text-white px-6 py-3 rounded-xl max-w-6xl mx-auto mb-6 flex justify-between items-center shadow-lg">
+  <div class="text-lg font-bold text-[var(--shopee-light)]">📦 ระบบจัดการรับประกัน</div>
   <div class="space-x-4 text-sm">
-    <a href="admin-dashboard.html" class="text-gray-700 hover:text-green-600">📊 Dashboard</a>
-    <a href="admin-claims.html" class="text-gray-700 hover:text-green-600">📋 เคลมสินค้า</a>
-    <a href="admin-registrations.html" class="text-gray-700 hover:text-green-600">✅ ลงทะเบียน</a>
-    <a href="admin-upload.html" class="text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded shadow">
-      📤 อัปโหลด
-    </a>
+    <a href="admin-dashboard.html" class="hover:text-[var(--shopee-blue)]">📊 Dashboard</a>
+    <a href="admin-claims.html" class="hover:text-[var(--shopee-blue)]">📋 เคลมสินค้า</a>
+    <a href="admin-registrations.html" class="hover:text-[var(--shopee-blue)]">✅ ลงทะเบียน</a>
+    <a href="admin-upload.html" class="bg-[var(--shopee-light)] text-black px-3 py-1 rounded shadow ">📤 Shopee</a>
+    <a href="admin-upload-tiktok.html"
+   class="bg-white text-[#fe2c55] border border-[#fe2c55] hover:bg-[#fe2c55] hover:text-white px-3 py-1 rounded shadow ">
+  📤 TikTok
+</a>
+  </div>
+   
   </div>
 </nav>
 
@@ -24,7 +37,8 @@
   <div class="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-md mb-6">
 
      <div class="flex justify-between items-center mb-4">
-      <h2 class="text-2xl font-bold text-green-600">📥 อัปโหลดคำสั่งซื้อ Shopee (.xlsx)</h2>
+      <h2 class="text-2xl font-bold text-[var(--shopee-orange)]">📥 อัปโหลดคำสั่งซื้อ Shopee (.xlsx)</h2>
+
       <div id="admin-info" class="text-sm text-gray-600"></div>
     </div>
 
@@ -36,21 +50,23 @@
       <h4 class="text-md font-semibold mb-2">👁‍🗨 ตัวอย่างข้อมูลจากไฟล์</h4>
       <div class="overflow-x-auto max-h-64 border rounded">
         <table id="previewTable" class="w-full text-sm border-collapse">
-          <thead class="bg-gray-100"></thead>
+          <thead class="bg-[var(--shopee-light)] text-[var(--shopee-dark)] font-semibold"></thead>
+
           <tbody class="bg-white"></tbody>
         </table>
       </div>
-      <button onclick="confirmUpload()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded">
-        📤 ยืนยันการอัปโหลด
-      </button>
+      <button onclick="confirmUpload()" class="mt-4 w-full bg-[var(--shopee-orange)] hover:bg-orange-600 text-white p-2 rounded">
+
     </div>
 
-    <p id="status" class="mt-4 text-sm text-blue-600"></p>
+   <p id="status" class="mt-4 text-sm text-[var(--shopee-orange)] font-medium"></p>
+
   </div>
 
   <!-- 📋 ตารางคำสั่งซื้อ -->
 <div class="max-w-6xl mx-auto">
-    <h3 class="text-xl font-semibold mb-3 text-gray-700">📋 รายการคำสั่งซื้อที่มีอยู่</h3>
+    <h3 class="text-xl font-semibold mb-3 text-[var(--shopee-dark)]">📋 รายการคำสั่งซื้อ Shopee</h3>
+
     <div class="overflow-x-auto rounded border border-gray-300">
       <table class="min-w-full text-sm text-left">
         <thead class="bg-gray-200">

@@ -5,17 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --admin-red: #ff0000;
+      --admin-black: #121212;
+      --admin-green: #00b140;
+      --admin-light: #f7f7f7;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 p-4 font-sans">
-
+<body class="bg-[var(--admin-light)] p-8 font-sans text-[var(--admin-light)]">
   <!-- 🔝 Navbar -->
-  <nav class="bg-white shadow-md px-6 py-3 rounded-xl max-w-6xl mx-auto mb-6 flex justify-between items-center">
-    <div class="text-lg font-bold text-green-600">📦 ระบบจัดการรับประกัน</div>
+  <nav class="bg-[var(--admin-green)] text-white px-6 py-3 rounded-xl max-w-6xl mx-auto mb-6 flex justify-between items-center shadow-lg">
+   <div class="text-lg font-bold text-[var(--admin-light)]">📦 ระบบจัดการรับประกัน</div>
     <div class="space-x-4 text-sm">
-      <a href="admin-dashboard.html" class="text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded shadow">📊 Dashboard</a>
-      <a href="admin-claims.html" class="text-gray-700 hover:text-green-600">📝 เคลมสินค้า</a>
-      <a href="admin-registrations.html" class="text-gray-700 hover:text-green-600">✅ ลงทะเบียน</a>
-      <a href="admin-upload.html" class="text-gray-700 hover:text-green-600">📤 อัปโหลด</a>
+      <a href="admin-dashboard.html" class="bg-[var(--admin-red)] text-white px-3 py-1 rounded shadow">📊 Dashboard</a>
+      <a href="admin-claims.html" class="hover:text-[var(--admin-red)]">📋 เคลมสินค้า</a>
+      <a href="admin-registrations.html" class="hover:text-[var(--admin-red)]">✅ ลงทะเบียน</a>
+      <a href="admin-upload.html"
+       class="bg-white text-[#ee4d2d] border border-[#ee4d2d] hover:bg-[#ee4d2d] hover:text-white px-3 py-1 rounded shadow transition-all duration-200">
+      📤 Shopee
+    </a>
+    <a href="admin-upload-tiktok.html" class="bg-white text-[#ee4d2d] border border-[#ee4d2d] hover:bg-[#fe2c55] hover:text-white px-3 py-1 rounded shadow transition-all duration-200">📤 TikTok</a>
     </div>
   </nav>
 
@@ -29,7 +40,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- ✅ Registration Table -->
       <div class="bg-white p-4 rounded-xl shadow-md">
-  <h2 class="text-lg font-semibold mb-2">📦 รายการลงทะเบียนสินค้า</h2>
+  <h2 class="text-black font-semibold mb-2">📦 รายการลงทะเบียนสินค้า</h2>
   <input type="text" id="searchRegistration" placeholder="🔍 ค้นหา Order ID, ชื่อ, เบอร์..." class="mb-2 w-full border px-3 py-1 rounded">
 
   <div class="overflow-x-auto max-h-[400px] overflow-y-auto border border-gray-200 rounded-md">
@@ -41,6 +52,7 @@
           <th class="border px-2 py-1">เบอร์</th>
           <th class="border px-2 py-1">วันที่</th>
           <th class="border px-2 py-1">หมดประกัน</th>
+          <th class="border px-2 py-1">แหล่งที่มา</th>
           <th class="border px-2 py-1 text-center">ดู</th>
           <th class="border px-2 py-1 text-center">ลบ</th>
         </tr>
@@ -53,7 +65,7 @@
 
       <!-- 📝 Claim Table -->
       <div class="bg-white p-4 rounded-xl shadow-md">
-  <h2 class="text-lg font-semibold mb-2">📋 รายการแจ้งเคลม</h2>
+  <h2 class="text-black font-semibold mb-2">📋 รายการแจ้งเคลม</h2>
   <input type="text" id="searchClaim" placeholder="🔍 ค้นหา Order ID, เหตุผล..." class="mb-2 w-full border px-3 py-1 rounded">
 
   <div class="overflow-x-auto max-h-[400px] overflow-y-auto border border-gray-200 rounded-md">
@@ -65,6 +77,7 @@
           <th class="border px-2 py-1">สถานะ</th>
           <th class="border px-2 py-1">วันที่</th>
           <th class="border px-2 py-1">เปลี่ยนสถานะ</th>
+          <th class="border px-2 py-1">แหล่งที่มา</th>
           <th class="border px-2 py-1 text-center">ดู</th>
           <th class="border px-2 py-1 text-center">ลบ</th>
         </tr>
@@ -195,6 +208,15 @@
   }
 }
 
+function renderSource(source) {
+  if (source === "tiktok") {
+    return `<span class="bg-black text-white text-xs px-2 py-0.5 rounded">TikTok</span>`;
+  } else if (source === "shopee") {
+    return `<span class="bg-orange-500 text-white text-xs px-2 py-0.5 rounded">Shopee</span>`;
+  } else {
+    return `<span class="bg-gray-300 text-gray-700 text-xs px-2 py-0.5 rounded">ไม่ระบุ</span>`;
+  }
+}
 
 
 
@@ -218,6 +240,8 @@
           <td class="border px-2 py-1">${item.registeredAtFormatted || "-"}</td>
 
           <td class="border px-2 py-1">${item.warrantyUntil || "-"}</td>
+          <td class="border px-2 py-1">${renderSource(item.source)}</td>
+
           <td class="border px-2 py-1 text-center">
             <button onclick='showDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})' class="text-blue-600 hover:underline">👁</button>
           </td>
@@ -241,7 +265,9 @@
           <td class="border px-2 py-1">${item.orderId}</td>
           <td class="border px-2 py-1">${item.reason || "-"}</td>
           <td class="border px-2 py-1">${item.status || "-"}</td>
-          <td class="border px-2 py-1">${formatDate(item.claimedAt)}</td>
+          
+          <td class="border px-2 py-1">${item.claimedAtFormatted || "-"}</td>
+          
           <td class="border px-2 py-1">
             <select id="status-${item.id}" class="border rounded px-1 py-0.5 text-sm bg-gray-50">
               <option${item.status === 'อยู่ระหว่างดำเนินการ' ? ' selected' : ''}>อยู่ระหว่างดำเนินการ</option>
@@ -250,6 +276,7 @@
             </select>
             <button onclick="updateStatus('${item.id}')" class="ml-1 bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-0.5 rounded text-sm">✔</button>
           </td>
+          <td class="border px-2 py-1">${renderSource(item.source)}</td>
           <td class="border px-2 py-1 text-center">
             <button onclick='showDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})' class="text-blue-600 hover:underline">👁</button>
           </td>

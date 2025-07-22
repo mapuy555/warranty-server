@@ -518,6 +518,7 @@ app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
       price: row["ราคาขาย"] || 0,
     }
   ],
+  source: "shopee", // ✅ เพิ่มบรรทัดนี้
   createdAt: admin.firestore.FieldValue.serverTimestamp()
 });
 
@@ -597,6 +598,57 @@ app.get("/api/liff-id-register", (req, res) => {
 // ✅ สำหรับหน้า claim
 app.get("/api/liff-id-claim", (req, res) => {
   res.json({ liffId: process.env.LIFF_ID_CLAIM });
+});
+
+app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "ไม่ได้แนบไฟล์" });
+
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet); // ใช้ header ภาษาอังกฤษแบบ TikTok
+
+    const batch = db.batch();
+
+    rows.forEach((row) => {
+      const orderId = row["Order ID"]?.toString().trim();
+      const name = row["Recipient"]?.toString().trim() || "-";
+      const productName = row["Product Name"]?.toString().trim() || "-";
+      const status = row["Order Status"]?.toString().trim() || "-";
+
+      // 🔄 แปลงวันที่จาก TikTok เช่น "2024-03-18 13:27:45"
+      let purchaseDate = null;
+      if (row["Paid Time"]) {
+        const paidRaw = row["Paid Time"].toString().replace(" ", "T");
+        const d = new Date(paidRaw);
+        if (!isNaN(d)) purchaseDate = admin.firestore.Timestamp.fromDate(d);
+      }
+
+      const ref = db.collection("orders").doc(orderId);
+      const orderData = {
+        orderId,
+        name,
+        status,
+        purchaseDate,
+        items: [
+          {
+            productName,
+            quantity: parseInt(row["Quantity"]) || 1,
+          },
+        ],
+        source: "tiktok",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      batch.set(ref, orderData, { merge: true });
+    });
+
+    await batch.commit();
+    res.json({ message: `อัปโหลดสำเร็จทั้งหมด ${rows.length} รายการ ✅` });
+  } catch (err) {
+    console.error("⛔ Upload TikTok Error:", err);
+    res.status(500).json({ message: "เกิดข้อผิดพลาดในการอัปโหลด TikTok" });
+  }
 });
 
 

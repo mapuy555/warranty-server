@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>อัปโหลดคำสั่งซื้อ TikTok</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --tiktok-black: #121212;
+      --tiktok-pink: #fe2c55;
+      --tiktok-blue: #25f4ee;
+      --tiktok-light: #f7f7f7;
+    }
+  </style>
+</head>
+
+<body class="bg-[var(--tiktok-light)] p-8 font-sans text-[var(--tiktok-dark)]">
+<!-- 🔝 Navigation -->
+<nav class="bg-[var(--tiktok-black)] text-white px-6 py-3 rounded-xl max-w-6xl mx-auto mb-6 flex justify-between items-center shadow-lg">
+  <div class="text-lg font-bold text-[var(--tiktok-blue)]">📦 ระบบจัดการรับประกัน</div>
+  <div class="space-x-4 text-sm">
+    <a href="admin-dashboard.html" class="hover:text-[var(--tiktok-pink)]">📊 Dashboard</a>
+    <a href="admin-claims.html" class="hover:text-[var(--tiktok-pink)]">📋 เคลมสินค้า</a>
+    <a href="admin-registrations.html" class="hover:text-[var(--tiktok-pink)]">✅ ลงทะเบียน</a>
+    <a href="admin-upload.html"
+       class="bg-white text-[#ee4d2d] border border-[#ee4d2d] hover:bg-[#ee4d2d] hover:text-white px-3 py-1 rounded shadow transition-all duration-200">
+      📤 Shopee
+    </a>
+    <a href="admin-upload-tiktok.html" class="bg-[var(--tiktok-pink)] text-white px-3 py-1 rounded shadow">📤 TikTok</a>
+  </div>
+</nav>
+
+<!-- 🧾 Upload Section -->
+<div class="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-md mb-6">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-2xl font-bold text-[var(--tiktok-pink)]">📥 อัปโหลดคำสั่งซื้อ TikTok (.xlsx)</h2>
+    <div id="admin-info" class="text-sm text-gray-600"></div>
+  </div>
+
+  <input type="file" id="excelFile" accept=".xlsx" class="block w-full mb-4 border p-2 rounded" />
+
+  <div id="preview-section" class="hidden mt-6">
+    <h4 class="text-md font-semibold mb-2">👁‍🗨 ตัวอย่างข้อมูลจากไฟล์</h4>
+    <div class="overflow-x-auto max-h-64 border rounded">
+      <table id="previewTable" class="w-full text-sm border-collapse">
+        <thead class="bg-gray-100"></thead>
+        <tbody class="bg-white"></tbody>
+      </table>
+    </div>
+    <button onclick="confirmUpload()" class="mt-4 w-full bg-[var(--tiktok-pink)] hover:bg-red-600 text-white p-2 rounded">
+      📤 ยืนยันการอัปโหลด
+    </button>
+  </div>
+
+  <p id="status" class="mt-4 text-sm text-blue-600"></p>
+</div>
+
+<!-- 📋 แสดงคำสั่งซื้อ -->
+<div class="max-w-6xl mx-auto">
+  <h3 class="text-xl font-semibold mb-3 text-gray-700">📋 รายการคำสั่งซื้อ TikTok</h3>
+  <div class="overflow-x-auto rounded border border-gray-300">
+    <table class="min-w-full text-sm text-left">
+      <thead class="bg-gray-200">
+        <tr>
+          <th class="border px-2 py-1">#</th>
+          <th class="border px-2 py-1">รหัสคำสั่งซื้อ</th>
+          <th class="border px-2 py-1">ชื่อผู้รับ</th>
+          <th class="border px-2 py-1">สินค้า</th>
+          <th class="border px-2 py-1">สถานะ</th>
+          <th class="border px-2 py-1">วันที่จัดส่ง</th>
+        </tr>
+      </thead>
+      <tbody id="orderTable" class="bg-white"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script type="module">
+  const res = await fetch("https://warranty-api-umg2.onrender.com/api/firebase-config");
+  const firebaseConfig = await res.json();
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  auth.onAuthStateChanged((user) => {
+    if (!user) {
+      window.location.href = "admin-login.html";
+    } else {
+      document.getElementById("admin-info").innerHTML = `👤 ${user.email}
+        <button onclick="logout()" class="text-red-500 ml-2 underline">ออกจากระบบ</button>`;
+      loadOrders();
+    }
+  });
+  window.logout = () => auth.signOut();
+
+  let selectedFileBlob = null;
+  document.getElementById("excelFile").addEventListener("change", previewFile);
+
+  function previewFile() {
+    const file = document.getElementById("excelFile").files[0];
+    if (!file) return;
+
+    selectedFileBlob = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet);
+
+      const headers = ["Order ID", "Recipient", "Product Name", "Paid Time", "Order Status"];
+      const thead = document.querySelector("#previewTable thead");
+      const tbody = document.querySelector("#previewTable tbody");
+
+      thead.innerHTML = `<tr>${headers.map(h => `<th class='border px-2 py-1 bg-gray-100'>${h}</th>`).join("")}</tr>`;
+      tbody.innerHTML = json.map(row => `
+        <tr>${headers.map(h => `<td class='border px-2 py-1'>${row[h] || "-"}</td>`).join("")}</tr>
+      `).join("");
+
+      document.getElementById("preview-section").classList.remove("hidden");
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  window.confirmUpload = async () => {
+    const status = document.getElementById("status");
+    if (!selectedFileBlob) return alert("⚠️ กรุณาเลือกไฟล์ก่อน");
+
+    const formData = new FormData();
+    formData.append("file", selectedFileBlob);
+    status.innerText = "⏳ กำลังอัปโหลด...";
+
+    try {
+      const res = await fetch("https://warranty-api-umg2.onrender.com/api/upload-orders-tiktok", {
+        method: "POST",
+        body: formData
+      });
+      const result = await res.json();
+      status.innerText = res.ok ? "✅ " + result.message : "❌ " + result.message;
+      if (res.ok) {
+        loadOrders();
+        document.getElementById("preview-section").classList.add("hidden");
+      }
+    } catch (err) {
+      console.error(err);
+      status.innerText = "❌ ไม่สามารถเชื่อมต่อ API ได้";
+    }
+  };
+
+  async function loadOrders() {
+    const table = document.getElementById("orderTable");
+    table.innerHTML = "";
+    const snapshot = await db.collection("orders_tiktok").orderBy("createdAt", "desc").limit(50).get();
+    let i = 1;
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      const date = d.purchaseDate ? new Date(d.purchaseDate.seconds * 1000).toLocaleDateString("th-TH") : "-";
+      let itemsHtml = "-";
+      if (Array.isArray(d.items)) {
+        itemsHtml = "<ul class='list-disc pl-4'>";
+        d.items.forEach(item => {
+          itemsHtml += `<li>${item.productName || "-"} (${item.quantity || 1} ชิ้น)</li>`;
+        });
+        itemsHtml += "</ul>";
+      }
+      table.innerHTML += `
+        <tr>
+          <td class="border px-2 py-1 text-center align-top">${i++}</td>
+          <td class="border px-2 py-1 align-top">${d.orderId || "-"}</td>
+          <td class="border px-2 py-1 align-top">${d.name || "-"}</td>
+          <td class="border px-2 py-1">${itemsHtml}</td>
+          <td class="border px-2 py-1 align-top">${d.status || "-"}</td>
+          <td class="border px-2 py-1 align-top">${date}</td>
+        </tr>
+      `;
+    });
+  }
+</script>
+</body>
+</html>
