@@ -360,12 +360,20 @@ app.post("/api/claim", async (req, res) => {
 app.get("/api/claims", async (req, res) => {
   try {
     const snapshot = await db.collection("claims").orderBy("claimedAt", "desc").get();
-    const claims = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const claims = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        claimedAtFormatted: formatDate(data.claimedAt)
+      };
+    });
     res.json({ claims });
   } catch (err) {
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูลการเคลม" });
   }
 });
+
 
 app.patch("/api/claims/:id/status", async (req, res) => {
   const { id } = req.params;
@@ -393,12 +401,20 @@ app.patch("/api/claims/:id/status", async (req, res) => {
 app.get("/api/registrations", async (req, res) => {
   try {
     const snapshot = await db.collection("registrations").orderBy("registeredAt", "desc").get();
-    const registrations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const registrations = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        registeredAtFormatted: formatDate(data.registeredAt)
+      };
+    });
     res.json({ registrations });
   } catch (err) {
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงข้อมูลลงทะเบียน" });
   }
 });
+
 
 app.delete("/api/claims/:id", async (req, res) => {
   try {

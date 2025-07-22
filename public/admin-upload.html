@@ -6,35 +6,66 @@
   <title>อัปโหลดคำสั่งซื้อ Shopee</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 p-6 font-sans">
-  <div class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-md">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-bold text-green-600">📥 อัปโหลดคำสั่งซื้อ Shopee (.xlsx)</h2>
+<body class="bg-gray-100 p-8 font-sans text-gray-800">
+  <!-- 🔝 Navigation Bar -->
+<nav class="bg-white shadow-md px-6 py-3 rounded-xl max-w-6xl mx-auto mb-6 flex justify-between items-center">
+  <div class="text-lg font-bold text-green-600">📦 ระบบจัดการรับประกัน</div>
+  <div class="space-x-4 text-sm">
+    <a href="admin-dashboard.html" class="text-gray-700 hover:text-green-600">📊 Dashboard</a>
+    <a href="admin-claims.html" class="text-gray-700 hover:text-green-600">📋 เคลมสินค้า</a>
+    <a href="admin-registrations.html" class="text-gray-700 hover:text-green-600">✅ ลงทะเบียน</a>
+    <a href="admin-upload.html" class="text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded shadow">
+      📤 อัปโหลด
+    </a>
+  </div>
+</nav>
+
+
+  <div class="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-md mb-6">
+
+     <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-bold text-green-600">📥 อัปโหลดคำสั่งซื้อ Shopee (.xlsx)</h2>
       <div id="admin-info" class="text-sm text-gray-600"></div>
     </div>
 
+    <!-- 📂 เลือกไฟล์ -->
     <input type="file" id="excelFile" accept=".xlsx" class="block w-full mb-4 border p-2 rounded" />
-    <button onclick="uploadFile()" class="w-full bg-green-500 hover:bg-green-600 text-white p-2 rounded">
-      ✅ อัปโหลดไฟล์
-    </button>
+
+    <!-- 🔍 Preview ก่อนอัปโหลด -->
+    <div id="preview-section" class="hidden mt-6">
+      <h4 class="text-md font-semibold mb-2">👁‍🗨 ตัวอย่างข้อมูลจากไฟล์</h4>
+      <div class="overflow-x-auto max-h-64 border rounded">
+        <table id="previewTable" class="w-full text-sm border-collapse">
+          <thead class="bg-gray-100"></thead>
+          <tbody class="bg-white"></tbody>
+        </table>
+      </div>
+      <button onclick="confirmUpload()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded">
+        📤 ยืนยันการอัปโหลด
+      </button>
+    </div>
+
     <p id="status" class="mt-4 text-sm text-blue-600"></p>
   </div>
 
-  <div class="max-w-5xl mx-auto mt-10">
-    <h3 class="text-lg font-semibold mb-2">📋 รายการคำสั่งซื้อที่มีอยู่</h3>
-    <table class="w-full text-sm border border-gray-300">
-      <thead class="bg-gray-100">
-        <tr>
-          <th class="border px-2 py-1">#</th>
-          <th class="border px-2 py-1">รหัสคำสั่งซื้อ</th>
-          <th class="border px-2 py-1">ชื่อผู้รับ</th>
-          <th class="border px-2 py-1">สินค้า</th>
-          <th class="border px-2 py-1">สถานะ</th>
-          <th class="border px-2 py-1">วันที่จัดส่ง</th>
-        </tr>
-      </thead>
-      <tbody id="orderTable" class="bg-white"></tbody>
-    </table>
+  <!-- 📋 ตารางคำสั่งซื้อ -->
+<div class="max-w-6xl mx-auto">
+    <h3 class="text-xl font-semibold mb-3 text-gray-700">📋 รายการคำสั่งซื้อที่มีอยู่</h3>
+    <div class="overflow-x-auto rounded border border-gray-300">
+      <table class="min-w-full text-sm text-left">
+        <thead class="bg-gray-200">
+          <tr>
+            <th class="border px-2 py-1">#</th>
+            <th class="border px-2 py-1">รหัสคำสั่งซื้อ</th>
+            <th class="border px-2 py-1">ชื่อผู้รับ</th>
+            <th class="border px-2 py-1">สินค้า</th>
+            <th class="border px-2 py-1">สถานะ</th>
+            <th class="border px-2 py-1">วันที่จัดส่ง</th>
+          </tr>
+        </thead>
+        <tbody id="orderTable" class="bg-white"></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Firebase SDK -->
@@ -46,14 +77,14 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <script type="module">
-    // 🔐 โหลด Firebase Config จาก API
-    const response = await fetch("https://warranty-api-umg2.onrender.com/api/firebase-config");
-    const firebaseConfig = await response.json();
+    // 🔐 โหลด Firebase Config
+    const res = await fetch("https://warranty-api-umg2.onrender.com/api/firebase-config");
+    const firebaseConfig = await res.json();
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // 🔐 ตรวจว่า login อยู่หรือไม่
+    // ✅ ตรวจสอบ Login
     auth.onAuthStateChanged((user) => {
       if (!user) {
         window.location.href = "admin-login.html";
@@ -62,24 +93,52 @@
           👤 ${user.email}
           <button onclick="logout()" class="text-red-500 ml-2 underline">ออกจากระบบ</button>
         `;
-        loadOrders(); // โหลดข้อมูลคำสั่งซื้อทันที
+        loadOrders();
       }
     });
+    window.logout = () => auth.signOut();
 
-    window.logout = () => {
-      auth.signOut();
-    };
+    // 🧾 Preview + Upload
+    let selectedFileBlob = null;
+    document.getElementById("excelFile").addEventListener("change", previewFile);
 
-    // 📤 อัปโหลดไฟล์ .xlsx ไปยัง API
-    window.uploadFile = async () => {
+    function previewFile() {
       const file = document.getElementById("excelFile").files[0];
+      if (!file) return;
+
+      selectedFileBlob = file;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet); // Header: ภาษาไทย
+
+        const headers = ["หมายเลขคำสั่งซื้อ", "ชื่อผู้รับ", "ชื่อสินค้า", "เวลาการชำระสินค้า", "สถานะการสั่งซื้อ"];
+        const thead = document.querySelector("#previewTable thead");
+        const tbody = document.querySelector("#previewTable tbody");
+
+        thead.innerHTML = `<tr>${headers.map(h => `<th class="border px-2 py-1 bg-gray-100">${h}</th>`).join("")}</tr>`;
+        tbody.innerHTML = json.map(row => `
+          <tr>
+            ${headers.map(h => `<td class="border px-2 py-1">${row[h] || "-"}</td>`).join("")}
+          </tr>
+        `).join("");
+
+        document.getElementById("preview-section").classList.remove("hidden");
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // 📤 ยืนยันการอัปโหลด
+    window.confirmUpload = async () => {
       const status = document.getElementById("status");
-      if (!file) return alert("📂 กรุณาเลือกไฟล์ .xlsx");
+      if (!selectedFileBlob) return alert("⚠️ กรุณาเลือกไฟล์ก่อน");
 
       const formData = new FormData();
-      formData.append("file", file);
-
+      formData.append("file", selectedFileBlob);
       status.innerText = "⏳ กำลังอัปโหลด...";
+
       try {
         const res = await fetch("https://warranty-api-umg2.onrender.com/api/upload-orders", {
           method: "POST",
@@ -88,7 +147,8 @@
         const result = await res.json();
         if (res.ok) {
           status.innerText = "✅ " + result.message;
-          loadOrders(); // โหลดข้อมูลใหม่
+          loadOrders();
+          document.getElementById("preview-section").classList.add("hidden");
         } else {
           status.innerText = "❌ " + result.message;
         }
@@ -98,39 +158,35 @@
       }
     };
 
-    // 📄 โหลดข้อมูลคำสั่งซื้อจาก Firestore
-async function loadOrders() {
-  const table = document.getElementById("orderTable");
-  table.innerHTML = "";
-  const snapshot = await db.collection("orders").orderBy("createdAt", "desc").limit(50).get();
-  let i = 1;
-  snapshot.forEach(doc => {
-    const d = doc.data();
-    const date = d.purchaseDate ? new Date(d.purchaseDate.seconds * 1000).toLocaleDateString("th-TH") : "-";
-
-    // ✅ แสดงสินค้าหลายรายการ
-    let itemsHtml = "-";
-    if (Array.isArray(d.items)) {
-      itemsHtml = "<ul class='list-disc pl-4'>";
-      d.items.forEach(item => {
-        itemsHtml += `<li>${item.productName || "-"} (${item.quantity || 1} ชิ้น)</li>`;
+    // 🔄 โหลดรายการจาก Firestore
+    async function loadOrders() {
+      const table = document.getElementById("orderTable");
+      table.innerHTML = "";
+      const snapshot = await db.collection("orders").orderBy("createdAt", "desc").limit(50).get();
+      let i = 1;
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        const date = d.purchaseDate ? new Date(d.purchaseDate.seconds * 1000).toLocaleDateString("th-TH") : "-";
+        let itemsHtml = "-";
+        if (Array.isArray(d.items)) {
+          itemsHtml = "<ul class='list-disc pl-4'>";
+          d.items.forEach(item => {
+            itemsHtml += `<li>${item.productName || "-"} (${item.quantity || 1} ชิ้น)</li>`;
+          });
+          itemsHtml += "</ul>";
+        }
+        table.innerHTML += `
+          <tr>
+            <td class="border px-2 py-1 text-center align-top">${i++}</td>
+            <td class="border px-2 py-1 align-top">${d.orderId || "-"}</td>
+            <td class="border px-2 py-1 align-top">${d.name || "-"}</td>
+            <td class="border px-2 py-1">${itemsHtml}</td>
+            <td class="border px-2 py-1 align-top">${d.status || "-"}</td>
+            <td class="border px-2 py-1 align-top">${date}</td>
+          </tr>
+        `;
       });
-      itemsHtml += "</ul>";
     }
-
-    table.innerHTML += `
-      <tr>
-        <td class="border px-2 py-1 text-center align-top">${i++}</td>
-        <td class="border px-2 py-1 align-top">${d.orderId || "-"}</td>
-        <td class="border px-2 py-1 align-top">${d.name || "-"}</td>
-        <td class="border px-2 py-1">${itemsHtml}</td>
-        <td class="border px-2 py-1 align-top">${d.status || "-"}</td>
-        <td class="border px-2 py-1 align-top">${date}</td>
-      </tr>
-    `;
-  });
-}
-
   </script>
 </body>
 </html>
