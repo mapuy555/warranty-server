@@ -638,10 +638,22 @@ app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) =>
       // 🔄 แปลงวันที่จาก TikTok เช่น "2024-03-18 13:27:45"
       let purchaseDate = null;
       if (row["Paid Time"]) {
-        const paidRaw = row["Paid Time"].toString().replace(" ", "T");
-        const d = new Date(paidRaw);
-        if (!isNaN(d)) purchaseDate = admin.firestore.Timestamp.fromDate(d);
-      }
+  try {
+    const raw = row["Paid Time"];
+    let date = null;
+    if (typeof raw === "number") {
+      date = new Date((raw - 25569) * 86400 * 1000); // Excel serial
+    } else if (typeof raw === "string") {
+      date = new Date(raw.replace(" ", "T"));
+    }
+    if (date && !isNaN(date)) {
+      purchaseDate = admin.firestore.Timestamp.fromDate(date);
+    }
+  } catch (err) {
+    console.warn("⚠️ แปลง Paid Time ไม่ได้:", row["Paid Time"]);
+  }
+}
+
 
       const ref = db.collection("orders_tiktok").doc(orderId);
       const orderData = {
