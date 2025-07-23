@@ -196,6 +196,7 @@ app.post("/api/register", async (req, res) => {
       address,
       registeredAt: admin.firestore.Timestamp.fromDate(registeredAt),
       warrantyUntil,
+      source: orderData.source || "unknown"
     });
 
     const flexMessage = createFlexMessage({
