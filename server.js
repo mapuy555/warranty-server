@@ -644,8 +644,16 @@ app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) =>
     if (typeof raw === "number") {
       date = new Date((raw - 25569) * 86400 * 1000); // Excel serial
     } else if (typeof raw === "string") {
-      date = new Date(raw.replace(" ", "T"));
-    }
+  if (raw.includes("/")) {
+    const [d, m, yAndTime] = raw.split("/");
+    const [y, time] = yAndTime.split(" ");
+    const isoString = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T${time}`;
+    date = new Date(isoString);
+  } else {
+    date = new Date(raw.replace(" ", "T"));
+  }
+}
+
     if (date && !isNaN(date)) {
       purchaseDate = admin.firestore.Timestamp.fromDate(date);
     }
