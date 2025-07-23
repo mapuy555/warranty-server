@@ -625,7 +625,8 @@ app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) =>
 
     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { range: 1 });
+    const rows = XLSX.utils.sheet_to_json(sheet, { range: 0, defval: "", raw: false });
+
 
     const batch = db.batch();
     let successCount = 0;
