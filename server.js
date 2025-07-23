@@ -625,7 +625,8 @@ app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) =>
 
     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet); // ใช้ header ภาษาอังกฤษแบบ TikTok
+    const rows = XLSX.utils.sheet_to_json(sheet, { range: 1 }); // เริ่มจากแถวที่ 2 (index = 1)
+ // ใช้ header ภาษาอังกฤษแบบ TikTok
 
     const batch = db.batch();
 
