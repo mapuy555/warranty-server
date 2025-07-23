@@ -101,8 +101,17 @@
     }
 
     // ✅ แสดงวันที่
-    document.getElementById("purchaseDate").innerText =
-      order.purchaseDate ? new Date(order.purchaseDate._seconds * 1000).toLocaleDateString("th-TH") : "-";
+    // ✅ แสดงวันที่แบบรองรับทั้ง string และ Timestamp
+let displayDate = "-";
+if (order.purchaseDate) {
+  if (typeof order.purchaseDate === "string") {
+    displayDate = new Date(order.purchaseDate).toLocaleDateString("th-TH");
+  } else if (order.purchaseDate._seconds) {
+    displayDate = new Date(order.purchaseDate._seconds * 1000).toLocaleDateString("th-TH");
+  }
+}
+document.getElementById("purchaseDate").innerText = displayDate;
+
   } catch (err) {
     errorMsg.innerText = err.message || "⚠️ เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า";
     document.getElementById("product").innerText = "-";
