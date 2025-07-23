@@ -1,5 +1,4 @@
 require("dotenv").config(); // ต้องอยู่บรรทัดแรก
-
 const express = require("express");
 const bodyParser = require("body-parser");
 const admin = require("firebase-admin");
@@ -29,6 +28,7 @@ function calculateWarrantyUntil(days) {
   today.setDate(today.getDate() + days);
   return today.toISOString().split("T")[0];
 }
+
 function formatDate(dateField) {
   try {
     return dateField.toDate().toISOString().split("T")[0];
@@ -36,6 +36,7 @@ function formatDate(dateField) {
     return "-";
   }
 }
+
 function createFlexMessage(data, orderData) {
   const itemTexts = orderData.items?.map(item => {
     return {
@@ -72,7 +73,6 @@ function createFlexMessage(data, orderData) {
     }
   };
 }
-
 
 function createAdminClaimCard(claimId, orderId, reason, status, claimedAt, contact) {
   return {
@@ -147,20 +147,30 @@ app.post("/api/user", async (req, res) => {
 app.get("/api/order/:orderId", async (req, res) => {
   try {
     const orderId = req.params.orderId;
-    const orderDoc = await db.collection("orders").doc(orderId).get();
 
-    if (!orderDoc.exists) {
-      return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
+    // 🔍 เช็กใน Shopee
+    let orderDoc = await db.collection("orders").doc(orderId).get();
+    if (orderDoc.exists) {
+      const data = orderDoc.data();
+      data.purchaseDateFormatted = formatDate(data.purchaseDate);
+      return res.status(200).json({ ...data, source: "shopee" });
     }
 
-    const data = orderDoc.data();
-    data.purchaseDateFormatted = formatDate(data.purchaseDate);
-    return res.status(200).json(data);
+    // 🔍 ถ้ายังไม่เจอ ลองใน TikTok
+    orderDoc = await db.collection("orders_tiktok").doc(orderId).get();
+    if (orderDoc.exists) {
+      const data = orderDoc.data();
+      data.purchaseDateFormatted = formatDate(data.purchaseDate);
+      return res.status(200).json({ ...data, source: "tiktok" });
+    }
+
+    return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
   } catch (error) {
     console.error("❌ Error fetching order:", error);
     return res.status(500).json({ message: "เกิดข้อผิดพลาดในการดึงคำสั่งซื้อ" });
   }
 });
+
 
 // ✅ ลงทะเบียนสินค้า
 app.post("/api/register", async (req, res) => {
