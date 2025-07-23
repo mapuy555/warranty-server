@@ -280,10 +280,17 @@ app.post("/api/claim", async (req, res) => {
       return res.status(400).json({ message: "กรุณากรอกข้อมูลให้ครบถ้วน" });
     }
 
-    const orderDoc = await db.collection("orders").doc(orderId).get();
-    if (!orderDoc.exists) {
-      return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
-    }
+    let orderDoc = await db.collection("orders").doc(orderId).get();
+
+// 🔁 ถ้ายังไม่เจอ ลองใน TikTok
+if (!orderDoc.exists) {
+  orderDoc = await db.collection("orders_tiktok").doc(orderId).get();
+}
+
+if (!orderDoc.exists) {
+  return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
+}
+
 
     const regDoc = await db.collection("registrations").doc(orderId).get();
     if (!regDoc.exists) {

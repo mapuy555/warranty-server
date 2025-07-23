@@ -2,91 +2,96 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
-      --admin-red: #ff0000;
-      --admin-black: #121212;
-      --admin-green: #00b140;
-      --admin-light: #f7f7f7;
+      --admin-red: #e11d48;
+      --admin-black: #1f2937;
+      --admin-green: #2563eb;
+      --admin-light: #f3f4f6;   
     }
+    body {
+         font-family: 'Prompt', sans-serif;
+         background-color: #f9fafb;
+      }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-<body class="bg-[var(--admin-light)] p-8 font-sans text-black">
-
+<body class="bg-[var(--admin-light)] text-gray-800">
   <!-- 🔝 Navbar -->
-  <nav class="bg-[var(--admin-green)] text-white px-6 py-3 rounded-xl max-w-6xl mx-auto mb-6 flex justify-between items-center shadow-lg">
-   <div class="text-lg font-bold text-[var(--admin-light)]">📦 ระบบจัดการรับประกัน</div>
-    <div class="space-x-4 text-sm">
-      <a href="admin-dashboard.html" class="bg-[var(--admin-red)] text-white px-3 py-1 rounded shadow">📊 Dashboard</a>
-      <a href="admin-claims.html" class="hover:text-[var(--admin-red)]">📋 เคลมสินค้า</a>
-      <a href="admin-registrations.html" class="hover:text-[var(--admin-red)]">✅ ลงทะเบียน</a>
-      <a href="admin-upload.html"
-       class="bg-white text-[#ee4d2d] border border-[#ee4d2d] hover:bg-[#ee4d2d] hover:text-white px-3 py-1 rounded shadow transition-all duration-200">
-      📤 Shopee
-    </a>
-    <a href="admin-upload-tiktok.html" class="bg-white text-[#ee4d2d] border border-[#ee4d2d] hover:bg-[#fe2c55] hover:text-white px-3 py-1 rounded shadow transition-all duration-200">📤 TikTok</a>
-    </div>
-  </nav>
+  <nav class="bg-[var(--admin-green)] text-white px-6 py-3 w-full flex flex-wrap justify-between items-center gap-2 shadow-md">
+  <div class="text-lg font-semibold mb-2 md:mb-0">ระบบจัดการรับประกัน</div>
+  <div class="flex flex-wrap items-center gap-3 text-sm">
+    <a href="admin-dashboard.html" class="bg-white text-[var(--admin-green)] font-medium px-3 py-1 rounded-md shadow hover:bg-[var(--admin-light)] transition">Dashboard</a>
+    <a href="admin-claims.html" class="hover:text-[var(--admin-black)]">เคลมสินค้า</a>
+    <a href="admin-registrations.html" class="hover:text-[var(--admin-black)]">ลงทะเบียน</a>
+    <a href="admin-upload.html" class="bg-white text-[#ee4d2d] border border-[#ee4d2d] hover:bg-[#ee4d2d] hover:text-white px-3 py-1 rounded-md shadow transition">Shopee</a>
+    <a href="admin-upload-tiktok.html" class="bg-white text-black border border-gray-400 hover:bg-[#121212] hover:text-white px-3 py-1 rounded-md shadow transition">TikTok</a>
 
-  <!-- 🧾 Main -->
-  <div class="max-w-6xl mx-auto">
-    <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold text-green-700">📊 Admin Dashboard</h1>
-      <div id="admin-info" class="text-sm text-gray-600"></div>
-    </div>
+    <!-- ✅ ย้าย admin-info มาต่อท้าย -->
+    <div id="admin-info" class="ml-3"></div>
+  </div>
+</nav>
+
+
+
+ <!-- 🧾 Main -->
+  <main class="max-w-7xl mx-auto py-6 px-4">
+    
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- ✅ Registration Table -->
-      <div class="bg-white p-4 rounded-xl shadow-md">
-  <h2 class="text-black font-semibold mb-2">📦 รายการลงทะเบียนสินค้า</h2>
-  <input type="text" id="searchRegistration" placeholder="🔍 ค้นหา Order ID, ชื่อ, เบอร์..." class="mb-2 w-full border px-3 py-1 rounded">
-
-  <div class="overflow-x-auto max-h-[400px] overflow-y-auto border border-gray-200 rounded-md">
-    <table class="w-full text-sm bg-white min-w-[600px]">
-      <thead class="bg-gray-100 sticky top-0 z-10 text-left">
-        <tr>
-          <th class="border px-2 py-1">Order ID</th>
-          <th class="border px-2 py-1">ชื่อ</th>
-          <th class="border px-2 py-1">เบอร์</th>
-          <th class="border px-2 py-1">วันที่</th>
-          <th class="border px-2 py-1">หมดประกัน</th>
-          <th class="border px-2 py-1">แหล่งที่มา</th>
-          <th class="border px-2 py-1 text-center">ดู</th>
-          <th class="border px-2 py-1 text-center">ลบ</th>
-        </tr>
-      </thead>
-      <tbody id="registrationTable"></tbody>
-    </table>
-  </div>
-</div>
-
+      <section class="bg-white p-5 rounded-xl shadow">
+        <h2 class="text-lg font-semibold text-[var(--admin-green)] mb-3">รายการลงทะเบียนสินค้า</h2>
+        <input type="text" id="searchRegistration" placeholder="ค้นหา Order ID, ชื่อ, เบอร์..." class="mb-3 w-full border border-gray-300 px-3 py-2 rounded focus:ring focus:ring-blue-200">
+        <div class="overflow-x-auto max-h-[420px] overflow-y-auto border border-gray-200 rounded-md">
+          <table class="w-full text-sm text-left min-w-[600px]">
+            <thead class="bg-gray-100 sticky top-0 z-10">
+              <tr>
+                <th class="border px-2 py-2">Order ID</th>
+                <th class="border px-2 py-2">ชื่อ</th>
+                <th class="border px-2 py-2">เบอร์</th>
+                <th class="border px-2 py-2">วันที่</th>
+                <th class="border px-2 py-2">หมดประกัน</th>
+                <th class="border px-2 py-2">แหล่งที่มา</th>
+                <th class="border px-2 py-2 text-center">รายละเอียด</th>
+                <th class="border px-2 py-2 text-center">ลบ</th>
+              </tr>
+            </thead>
+            <tbody id="registrationTable"></tbody>
+          </table>
+        </div>
+      </section>
 
       <!-- 📝 Claim Table -->
-      <div class="bg-white p-4 rounded-xl shadow-md">
-  <h2 class="text-black font-semibold mb-2">📋 รายการแจ้งเคลม</h2>
-  <input type="text" id="searchClaim" placeholder="🔍 ค้นหา Order ID, เหตุผล..." class="mb-2 w-full border px-3 py-1 rounded">
+      <section class="bg-white p-5 rounded-xl shadow">
+        <h2 class="text-lg font-semibold text-[var(--admin-green)] mb-3">รายการแจ้งเคลม</h2>
+        <input type="text" id="searchClaim" placeholder="ค้นหา Order ID, เหตุผล..." class="mb-3 w-full border border-gray-300 px-3 py-2 rounded focus:ring focus:ring-blue-200">
+        <div class="overflow-x-auto max-h-[420px] overflow-y-auto border border-gray-200 rounded-md">
+          <table class="w-full text-sm text-left min-w-[700px]">
+            <thead class="bg-gray-100 sticky top-0 z-10">
+              <tr>
+                <th class="border px-2 py-2">Order ID</th>
+                <th class="border px-2 py-2">เหตุผล</th>
+                <th class="border px-2 py-2">สถานะ</th>
+                <th class="border px-2 py-2">วันที่</th>
+                <th class="border px-2 py-2">เปลี่ยนสถานะ</th>
+                <th class="border px-2 py-2">แหล่งที่มา</th>
+                <th class="border px-2 py-2 text-center">รายละเอียด</th>
+                <th class="border px-2 py-2 text-center">ลบ</th>
+              </tr>
+            </thead>
+            <tbody id="claimTable"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
 
-  <div class="overflow-x-auto max-h-[400px] overflow-y-auto border border-gray-200 rounded-md">
-    <table class="w-full text-sm bg-white min-w-[700px]">
-      <thead class="bg-gray-100 sticky top-0 z-10 text-left">
-        <tr>
-          <th class="border px-2 py-1">Order ID</th>
-          <th class="border px-2 py-1">เหตุผล</th>
-          <th class="border px-2 py-1">สถานะ</th>
-          <th class="border px-2 py-1">วันที่</th>
-          <th class="border px-2 py-1">เปลี่ยนสถานะ</th>
-          <th class="border px-2 py-1">แหล่งที่มา</th>
-          <th class="border px-2 py-1 text-center">ดู</th>
-          <th class="border px-2 py-1 text-center">ลบ</th>
-        </tr>
-      </thead>
-      <tbody id="claimTable"></tbody>
-    </table>
-  </div>
-</div>
+    <p id="status" class="mt-4 text-center text-green-600 font-medium"></p>
+  </main>
 
 
     <p id="status" class="mt-4 text-center text-blue-600"></p>
@@ -96,51 +101,17 @@
   <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-50">
     <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-lg relative">
       <button onclick="closeModal()" class="absolute top-2 right-3 text-gray-500 hover:text-red-500 text-xl">✖</button>
-      <h3 class="text-lg font-semibold mb-4 text-green-600">📄 รายละเอียด</h3>
+      <h3 class="text-lg font-semibold mb-4 text-green-600">รายละเอียด</h3>
       <div id="modalContent" class="text-sm space-y-2"></div>
     </div>
   </div>
 
   <!-- 📤 Export Button -->
   <div class="fixed bottom-4 right-4">
-  <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow">⬇️ Export Excel</button>
-</div>
+    <button onclick="exportToExcel()" class="bg-[var(--admin-red)] hover:bg-[var(--admin-green)] text-white px-5 py-2 rounded shadow transition">Export Excel</button>
+  </div>
 
-  <script>
-    function exportToExcel() {
-    const rows = [['ประเภท', 'Order ID', 'ชื่อ', 'เบอร์', 'อีเมล', 'วันที่', 'หมดประกัน', 'สถานะ', 'เหตุผล']];
-    registrationData.forEach(r => rows.push([
-      'ลงทะเบียน',
-      r.orderId,
-      r.name,
-      r.phone,
-      r.email || '',
-      formatDate(r.registeredAt),
-      r.warrantyUntil || '',
-      '-',
-      '-'
-    ]));
-    claimData.forEach(c => rows.push([
-      'แจ้งเคลม',
-      c.orderId,
-      '-',
-      '-',
-      '-',
-      formatDate(c.claimedAt),
-      '-',
-      c.status || '',
-      c.reason || ''
-    ]));
-
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "ข้อมูลรับประกัน");
-
-    const filename = `warranty-dashboard-${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(wb, filename);
-  }
-    
-  </script>
+ 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
   import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
@@ -160,7 +131,16 @@
       alert("⛔ คุณไม่มีสิทธิ์ใช้งานหน้านี้");
       signOut(auth);
     } else {
-      document.getElementById("admin-info").innerHTML = `👤 ${user.email} <button onclick="logout()" class="text-red-500 ml-2 underline">ออกจากระบบ</button>`;
+     document.getElementById("admin-info").innerHTML = `
+  <div class="flex items-center gap-2 bg-white text-gray-800 px-3 py-1 rounded-md shadow text-xs">
+    <span class="text-lg">👤</span>
+    <span class="hidden sm:inline">${user.email}</span>
+   <button onclick="logout()" class="text-red-600 hover:text-white hover:bg-red-600 transition px-2 py-0.5 rounded">ออก</button>
+  </div>
+`;
+
+
+
       loadRegistrations();
       loadClaims();
     }
@@ -373,6 +353,42 @@ function renderSource(source) {
     modal.classList.add("hidden");
     modal.classList.remove("flex");
   };
+
+// ✅ ฟังก์ชัน export
+window.exportToExcel = () => {
+  const rows = [['ประเภท', 'Order ID', 'ชื่อ', 'เบอร์', 'อีเมล', 'วันที่', 'หมดประกัน', 'สถานะ', 'เหตุผล']];
+  registrationData.forEach(r => rows.push([
+    'ลงทะเบียน',
+    r.orderId,
+    r.name,
+    r.phone,
+    r.email || '',
+    formatDate(r.registeredAt),
+    r.warrantyUntil || '',
+    '-',
+    '-'
+  ]));
+  claimData.forEach(c => rows.push([
+    'แจ้งเคลม',
+    c.orderId,
+    '-',
+    '-',
+    '-',
+    formatDate(c.claimedAt),
+    '-',
+    c.status || '',
+    c.reason || ''
+  ]));
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "ข้อมูลรับประกัน");
+
+  const filename = `warranty-dashboard-${new Date().toISOString().split('T')[0]}.xlsx`;
+  XLSX.writeFile(wb, filename);
+};
+
+
 </script>
 
 </body>

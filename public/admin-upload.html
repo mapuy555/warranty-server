@@ -2,87 +2,80 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>อัปโหลดคำสั่งซื้อ Shopee</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
   :root {
     --shopee-orange: #ee4d2d;
-    --shopee-dark: #333;
+    --shopee-black: #333;
     --shopee-light: #f7f7f7;
-    --shopee-blue: #25f4ee;
   }  
+  body {
+         font-family: 'Prompt', sans-serif;
+         background-color: #f9fafb;
+      }
 </style>
 </head>
-
-<body class="bg-[var(--shopee-light)] p-8 font-sans text-[var(--shopee-dark)]">
+<body class="bg-[var(--shopee-light)] text-gray-800">
   <!-- 🔝 Navigation Bar -->
-<nav class="bg-[var(--shopee-orange)] text-white px-6 py-3 rounded-xl max-w-6xl mx-auto mb-6 flex justify-between items-center shadow-lg">
-  <div class="text-lg font-bold text-[var(--shopee-light)]">📦 ระบบจัดการรับประกัน</div>
-  <div class="space-x-4 text-sm">
-    <a href="admin-dashboard.html" class="hover:text-[var(--shopee-blue)]">📊 Dashboard</a>
-    <a href="admin-claims.html" class="hover:text-[var(--shopee-blue)]">📋 เคลมสินค้า</a>
-    <a href="admin-registrations.html" class="hover:text-[var(--shopee-blue)]">✅ ลงทะเบียน</a>
-    <a href="admin-upload.html" class="bg-[var(--shopee-light)] text-black px-3 py-1 rounded shadow ">📤 Shopee</a>
-    <a href="admin-upload-tiktok.html"
-   class="bg-white text-[#fe2c55] border border-[#fe2c55] hover:bg-[#fe2c55] hover:text-white px-3 py-1 rounded shadow ">
-  📤 TikTok
-</a>
-  </div>
-   
-  </div>
-</nav>
-
-
-  <div class="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-md mb-6">
-
-     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-2xl font-bold text-[var(--shopee-orange)]">📥 อัปโหลดคำสั่งซื้อ Shopee (.xlsx)</h2>
-
-      <div id="admin-info" class="text-sm text-gray-600"></div>
+   <nav class="bg-[var(--shopee-orange)] text-white px-6 py-3 w-full flex flex-wrap justify-between items-center gap-2 shadow-md">
+    <div class="text-lg font-semibold mb-2 md:mb-0">ระบบจัดการรับประกัน</div>
+    <div class="flex flex-wrap items-center gap-3 text-sm">
+      <a href="admin-dashboard.html" class="hover:text-[var(--shopee-black)]">Dashboard</a>
+      <a href="admin-claims.html" class="hover:text-[var(--shopee-black)]">เคลมสินค้า</a>
+      <a href="admin-registrations.html" class="hover:text-[var(--shopee-black)]">ลงทะเบียน</a>
+      <a href="admin-upload.html" class="bg-white text-[var(--shopee-orange)] font-medium px-3 py-1 rounded-md shadow hover:bg-[var(--shopee-light)] transition">Shopee</a>
+      <a href="admin-upload-tiktok.html" class="bg-white text-black border border-gray-400 hover:bg-[#121212] hover:text-white px-3 py-1 rounded-md shadow transition">TikTok</a>
+      <div id="admin-info" class="ml-3"></div>
     </div>
+  </nav>
 
-    <!-- 📂 เลือกไฟล์ -->
-    <input type="file" id="excelFile" accept=".xlsx" class="block w-full mb-4 border p-2 rounded" />
+<!-- Main -->
+  <main class="max-w-6xl mx-auto py-6 px-4">
+    <section class="bg-white p-6 rounded-xl shadow-md mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold text-[var(--shopee-orange)]">อัปโหลดคำสั่งซื้อ Shopee (.xlsx)</h2>
+      </div>
+      <input type="file" id="excelFile" accept=".xlsx" class="block w-full mb-4 border p-2 rounded" />
 
-    <!-- 🔍 Preview ก่อนอัปโหลด -->
-    <div id="preview-section" class="hidden mt-6">
-      <h4 class="text-md font-semibold mb-2">👁‍🗨 ตัวอย่างข้อมูลจากไฟล์</h4>
-      <div class="overflow-x-auto max-h-64 border rounded">
-        <table id="previewTable" class="w-full text-sm border-collapse">
-          <thead class="bg-[var(--shopee-light)] text-[var(--shopee-dark)] font-semibold"></thead>
+      <div id="preview-section" class="hidden mt-6">
+        <h4 class="text-md font-semibold mb-2">ตัวอย่างข้อมูลจากไฟล์</h4>
+        <div class="overflow-x-auto max-h-64 border rounded">
+          <table id="previewTable" class="w-full text-sm border-collapse">
+            <thead class="bg-gray-100"></thead>
+            <tbody class="bg-white"></tbody>
+          </table>
+        </div>
+        <button onclick="confirmUpload()" class="mt-4 w-full bg-[var(--shopee-orange)] hover:bg-red-600 text-white p-2 rounded">
+          ยืนยันการอัปโหลด
+        </button>
+      </div>
 
-          <tbody class="bg-white"></tbody>
+      <p id="status" class="mt-4 text-sm text-blue-600"></p>
+    </section>
+
+    <!-- 📋 แสดงคำสั่งซื้อ -->
+    <section class="bg-white p-6 rounded-xl shadow-md">
+      <h3 class="text-xl font-semibold mb-3 text-gray-700">รายการคำสั่งซื้อ Shopee</h3>
+      <div class="overflow-x-auto rounded border border-gray-300">
+        <table class="min-w-full text-sm text-left">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="border px-2 py-1">#</th>
+              <th class="border px-2 py-1">รหัสคำสั่งซื้อ</th>
+              <th class="border px-2 py-1">ชื่อผู้รับ</th>
+              <th class="border px-2 py-1">สินค้า</th>
+              <th class="border px-2 py-1">สถานะ</th>
+              <th class="border px-2 py-1">วันที่จัดส่ง</th>
+            </tr>
+          </thead>
+          <tbody id="orderTable" class="bg-white"></tbody>
         </table>
       </div>
-      <button onclick="confirmUpload()" class="mt-4 w-full bg-[var(--shopee-orange)] hover:bg-orange-600 text-white p-2 rounded">
-
-    </div>
-
-   <p id="status" class="mt-4 text-sm text-[var(--shopee-orange)] font-medium"></p>
-
-  </div>
-
-  <!-- 📋 ตารางคำสั่งซื้อ -->
-<div class="max-w-6xl mx-auto">
-    <h3 class="text-xl font-semibold mb-3 text-[var(--shopee-dark)]">📋 รายการคำสั่งซื้อ Shopee</h3>
-
-    <div class="overflow-x-auto rounded border border-gray-300">
-      <table class="min-w-full text-sm text-left">
-        <thead class="bg-gray-200">
-          <tr>
-            <th class="border px-2 py-1">#</th>
-            <th class="border px-2 py-1">รหัสคำสั่งซื้อ</th>
-            <th class="border px-2 py-1">ชื่อผู้รับ</th>
-            <th class="border px-2 py-1">สินค้า</th>
-            <th class="border px-2 py-1">สถานะ</th>
-            <th class="border px-2 py-1">วันที่จัดส่ง</th>
-          </tr>
-        </thead>
-        <tbody id="orderTable" class="bg-white"></tbody>
-      </table>
-    </div>
-  </div>
+    </section>
+  </main>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -105,10 +98,13 @@
       if (!user) {
         window.location.href = "admin-login.html";
       } else {
-        document.getElementById("admin-info").innerHTML = `
-          👤 ${user.email}
-          <button onclick="logout()" class="text-red-500 ml-2 underline">ออกจากระบบ</button>
-        `;
+         document.getElementById("admin-info").innerHTML = `
+  <div class="flex items-center gap-2 bg-white text-gray-800 px-3 py-1 rounded-md shadow text-xs">
+    <span class="text-lg">👤</span>
+    <span class="hidden sm:inline">${user.email}</span>
+   <button onclick="logout()" class="text-red-600 hover:text-white hover:bg-red-600 transition px-2 py-0.5 rounded">ออก</button>
+  </div>
+`;
         loadOrders();
       }
     });
