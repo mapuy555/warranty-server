@@ -625,76 +625,78 @@ app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) =>
 
     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { range: 1 }); // เริ่มจากแถวที่ 2 (index = 1)
- // ใช้ header ภาษาอังกฤษแบบ TikTok
+    const rows = XLSX.utils.sheet_to_json(sheet, { range: 1 });
 
     const batch = db.batch();
+    let successCount = 0;
 
- rows.forEach((row) => {
-  const orderId = row["Order ID"]?.toString().trim();
-  if (!orderId) {
-    console.warn("⚠️ ข้ามรายการ: ไม่มี Order ID", row);
-    return;
-  }
+    rows.forEach((row) => {
+      const orderId = row["Order ID"]?.toString().trim();
+      if (!orderId) {
+        console.warn("⚠️ ข้ามรายการ: ไม่มี Order ID", row);
+        return;
+      }
 
-  const name = row["Recipient"]?.toString().trim() || "-";
-  const productName = row["Product Name"]?.toString().trim() || "-";
-  const status = row["Order Status"]?.toString().trim() || "-";
+      const name = row["Recipient"]?.toString().trim() || "-";
+      const productName = row["Product Name"]?.toString().trim() || "-";
+      const status = row["Order Status"]?.toString().trim() || "-";
 
-  // 🔄 แปลงวันที่จาก TikTok เช่น "2024-03-18 13:27:45"
-  let purchaseDate = null;
-  if (row["Paid Time"]) {
-    try {
-      const raw = row["Paid Time"];
-      let date = null;
-      if (typeof raw === "number") {
-        date = new Date((raw - 25569) * 86400 * 1000); // Excel serial
-      } else if (typeof raw === "string") {
-        if (raw.includes("/")) {
-          const [d, m, yAndTime] = raw.split("/");
-          const [y, time] = yAndTime.split(" ");
-          const isoString = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}T${time}`;
-          date = new Date(isoString);
-        } else {
-          date = new Date(raw.replace(" ", "T"));
+      // 🔄 แปลงวันที่
+      let purchaseDate = null;
+      if (row["Paid Time"]) {
+        try {
+          const raw = row["Paid Time"];
+          let date = null;
+          if (typeof raw === "number") {
+            date = new Date((raw - 25569) * 86400 * 1000);
+          } else if (typeof raw === "string") {
+            if (raw.includes("/")) {
+              const [d, m, yAndTime] = raw.split("/");
+              const [y, time] = yAndTime.split(" ");
+              const isoString = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T${time}`;
+              date = new Date(isoString);
+            } else {
+              date = new Date(raw.replace(" ", "T"));
+            }
+          }
+          if (date && !isNaN(date)) {
+            purchaseDate = admin.firestore.Timestamp.fromDate(date);
+          }
+        } catch (err) {
+          console.warn("⚠️ แปลง Paid Time ไม่ได้:", row["Paid Time"]);
         }
       }
 
-      if (date && !isNaN(date)) {
-        purchaseDate = admin.firestore.Timestamp.fromDate(date);
-      }
-    } catch (err) {
-      console.warn("⚠️ แปลง Paid Time ไม่ได้:", row["Paid Time"]);
-    }
-  }
+      const ref = db.collection("orders_tiktok").doc(orderId);
+      const orderData = {
+        orderId,
+        name,
+        status,
+        purchaseDate,
+        items: [
+          {
+            productName,
+            quantity: parseInt(row["Quantity"]) || 1,
+          },
+        ],
+        source: "tiktok",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
 
-  const ref = db.collection("orders_tiktok").doc(orderId);
-  const orderData = {
-    orderId,
-    name,
-    status,
-    purchaseDate,
-    items: [
-      {
-        productName,
-        quantity: parseInt(row["Quantity"]) || 1,
-      },
-    ],
-    source: "tiktok",
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  };
-
-  batch.set(ref, orderData, { merge: true });
-});
-
+      batch.set(ref, orderData, { merge: true });
+      successCount++;
+    });
 
     await batch.commit();
-    res.json({ message: `อัปโหลดสำเร็จทั้งหมด ${rows.length} รายการ ✅` });
+    res.json({
+      message: `อัปโหลดสำเร็จทั้งหมด ${successCount} รายการ ✅`,
+    });
   } catch (err) {
     console.error("⛔ Upload TikTok Error:", err);
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการอัปโหลด TikTok" });
   }
 });
+
 
 
 //fihfrrji
