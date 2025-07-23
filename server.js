@@ -625,7 +625,8 @@ app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) =>
 
     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { range: 0, defval: "", raw: false });
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+
 
 
     const batch = db.batch();
@@ -633,6 +634,10 @@ app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) =>
 
     rows.forEach((row) => {
       const orderId = row["Order ID"]?.toString().trim();
+
+      if (orderId === "Platform unique order ID.") return;
+
+
       if (!orderId) {
         console.warn("⚠️ ข้ามรายการ: ไม่มี Order ID", row);
         return;
