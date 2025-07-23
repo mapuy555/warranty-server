@@ -113,16 +113,29 @@
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(sheet);
+      const json = XLSX.utils.sheet_to_json(sheet, { range: 1 }); // ข้ามแถวที่ 2 ซึ่งเป็นคำอธิบาย
 
-      const headers = ["Order ID", "Recipient", "Product Name", "Paid Time", "Order Status"];
+
+      const headers = [
+  "Platform unique order ID.",
+  "Recipient name",
+  "Platform product name.",
+  "Order paid time.",
+  "Current order status."
+];
+
+const displayNames = [
+  "Order ID", "Recipient", "Product Name", "Paid Time", "Order Status"
+];
+
       const thead = document.querySelector("#previewTable thead");
       const tbody = document.querySelector("#previewTable tbody");
 
-      thead.innerHTML = `<tr>${headers.map(h => `<th class='border px-2 py-1 bg-gray-100'>${h}</th>`).join("")}</tr>`;
-      tbody.innerHTML = json.map(row => `
-        <tr>${headers.map(h => `<td class='border px-2 py-1'>${row[h] || "-"}</td>`).join("")}</tr>
-      `).join("");
+      thead.innerHTML = `<tr>${displayNames.map(h => `<th class='border px-2 py-1 bg-gray-100'>${h}</th>`).join("")}</tr>`;
+tbody.innerHTML = json.map(row => `
+  <tr>${headers.map(h => `<td class='border px-2 py-1'>${row[h] || "-"}</td>`).join("")}</tr>
+`).join("");
+
 
       document.getElementById("preview-section").classList.remove("hidden");
     };
