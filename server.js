@@ -273,6 +273,7 @@ app.get("/api/check-status/:orderId", async (req, res) => {
 
 
 // ✅ เคลมสินค้า
+// ✅ เคลมสินค้า
 app.post("/api/claim", async (req, res) => {
   try {
     const { userId, orderId, reason, contact } = req.body;
@@ -280,18 +281,18 @@ app.post("/api/claim", async (req, res) => {
       return res.status(400).json({ message: "กรุณากรอกข้อมูลให้ครบถ้วน" });
     }
 
+    // 🔍 ค้นหา order จาก Shopee หรือ TikTok
     let orderDoc = await db.collection("orders").doc(orderId).get();
+    if (!orderDoc.exists) {
+      orderDoc = await db.collection("orders_tiktok").doc(orderId).get();
+    }
+    if (!orderDoc.exists) {
+      return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
+    }
 
-// 🔁 ถ้ายังไม่เจอ ลองใน TikTok
-if (!orderDoc.exists) {
-  orderDoc = await db.collection("orders_tiktok").doc(orderId).get();
-}
+    const orderData = orderDoc.data(); // ✅ ใช้ orderData เพื่ออ่าน source
 
-if (!orderDoc.exists) {
-  return res.status(404).json({ message: "❌ ไม่พบคำสั่งซื้อ" });
-}
-
-
+    // 🔍 ตรวจสอบการลงทะเบียน
     const regDoc = await db.collection("registrations").doc(orderId).get();
     if (!regDoc.exists) {
       return res.status(400).json({ message: "⛔ ยังไม่ได้ลงทะเบียนสินค้านี้" });
@@ -305,15 +306,18 @@ if (!orderDoc.exists) {
       return res.status(400).json({ message: `⚠️ หมดประกันวันที่ ${regData.warrantyUntil}` });
     }
 
+    // ✅ เพิ่ม source ลง claims
     await db.collection("claims").add({
       userId,
       orderId,
       reason,
       contact,
       status: "อยู่ระหว่างดำเนินการ",
-      claimedAt: admin.firestore.Timestamp.now()
+      claimedAt: admin.firestore.Timestamp.now(),
+      source: orderData.source || "ไม่ระบุ" // ✅ เพิ่มแหล่งที่มา
     });
 
+    // ✅ สร้าง Flex Message สำหรับแจ้งเตือน
     const newClaimQuery = await db.collection("claims")
       .where("userId", "==", userId)
       .where("orderId", "==", orderId)
@@ -324,26 +328,14 @@ if (!orderDoc.exists) {
     if (!newClaimQuery.empty) {
       const claimDoc = newClaimQuery.docs[0];
       const claimId = newClaimQuery.docs[0].id;
-
       const claimData = claimDoc.data();
-      const claimedAtDate = claimData.claimedAt.toDate(); // ✅ แปลงเป็น Date
-      const claimedAtStr = claimedAtDate.toISOString().split("T")[0]; // ✅ แปลงเป็น string วันที่ เช่น 2025-07-16
+      const claimedAtStr = claimData.claimedAt.toDate().toISOString().split("T")[0];
 
       const adminFlex = createAdminClaimCard(claimId, orderId, reason, "อยู่ระหว่างดำเนินการ", claimedAtStr, contact);
-
-// ส่งหาแอดมิน — ไม่ใช้แล้ว
-/*
-      await axios.post("https://api.line.me/v2/bot/message/push", {
-        to: process.env.ADMIN_USER_IDS,
-        messages: [adminFlex]
-      }, {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`
-        }
-      });*/
+      // ❌ ไม่ส่งหาแอดมินตรงนี้ (ปิดไว้แล้ว)
     }
 
+    // ✅ ตอบกลับผู้ใช้ผ่าน LINE
     const messages = [
       {
         type: "text",
@@ -382,6 +374,7 @@ if (!orderDoc.exists) {
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการแจ้งเคลม" });
   }
 });
+
 
 app.get("/api/claims", async (req, res) => {
   try {
