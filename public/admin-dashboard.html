@@ -164,11 +164,33 @@
 
 
   async function loadClaims() {
-    const res = await fetch("https://warranty-api-umg2.onrender.com/api/claims");
-    const data = await res.json();
-    claimData = data.claims;
-    renderClaimTable();
-  }
+  const res = await fetch("https://warranty-api-umg2.onrender.com/api/claims");
+  const data = await res.json();
+  const claims = data.claims;
+
+  // 👇 ดึง registration ทั้งหมดมาไว้ใน Map โดยอ้างอิงจาก orderId
+  const regMap = new Map();
+  registrationData.forEach(reg => {
+    regMap.set(reg.orderId, reg);
+  });
+
+  // 👇 ผสานข้อมูลจาก registrations เข้าแต่ละ claim
+  claimData = claims.map(c => {
+    const reg = regMap.get(c.orderId);
+    return {
+      ...c,
+      name: reg?.name || "-",
+      phone: reg?.phone || "-",
+      email: reg?.email || "-",
+      address: reg?.address || "-",
+      registeredAt: reg?.registeredAt || null,
+      warrantyUntil: reg?.warrantyUntil || "-"
+    };
+  });
+
+  renderClaimTable();
+}
+
 
 function formatDate(ts) {
   try {
