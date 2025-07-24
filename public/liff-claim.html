@@ -2,12 +2,13 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
   <title>แจ้งเคลมสินค้า</title>
   <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      font-family: "Segoe UI", sans-serif;
+      font-family: 'Prompt', sans-serif;
       max-width: 400px;
       margin: 30px auto;
       padding: 20px;
@@ -20,6 +21,7 @@
       color: #333;
     }
     input, textarea, button {
+      font-family: 'Prompt', sans-serif;
       width: 100%;
       padding: 12px;
       margin-top: 12px;
@@ -61,14 +63,14 @@
   </style>
 </head>
 <body>
-  <h2>📦 แจ้งเคลมสินค้า</h2>
+  <h2>แจ้งเคลมสินค้า</h2>
   <p id="lineName">👤 กำลังโหลดผู้ใช้...</p>
 
   <form id="claimForm">
     <input type="text" id="orderId" placeholder="เลขคำสั่งซื้อ" required>
     <textarea id="reason" placeholder="เหตุผลในการเคลม" required></textarea>
     <input type="text" id="contact" placeholder="ช่องทางติดต่อกลับ (เบอร์ / ไลน์ / อีเมล)" required>
-    <button type="submit">📨 ส่งคำร้องเคลม</button>
+    <button type="submit">ส่งคำร้องเคลม</button>
     <p class="error" id="errorMsg"></p>
     <p class="success" id="successMsg"></p>
   </form>

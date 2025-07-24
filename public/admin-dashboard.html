@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     :root {
       --admin-red: #e11d48;
@@ -101,7 +102,7 @@
   <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-50">
     <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-lg relative">
       <button onclick="closeModal()" class="absolute top-2 right-3 text-gray-500 hover:text-red-500 text-xl">✖</button>
-      <h3 class="text-lg font-semibold mb-4 text-green-600">รายละเอียด</h3>
+      <h3 class="text-lg font-semibold mb-4 text-[var(--admin-green)]">รายละเอียด</h3>
       <div id="modalContent" class="text-sm space-y-2"></div>
     </div>
   </div>
@@ -133,11 +134,12 @@
     } else {
      document.getElementById("admin-info").innerHTML = `
   <div class="flex items-center gap-2 bg-white text-gray-800 px-3 py-1 rounded-md shadow text-xs">
-    <span class="text-lg">👤</span>
+    <i class="fas fa-user-circle text-lg text-gray-600"></i>
     <span class="hidden sm:inline">${user.email}</span>
-   <button onclick="logout()" class="text-red-600 hover:text-white hover:bg-red-600 transition px-2 py-0.5 rounded">ออก</button>
+    <button onclick="logout()" class="text-red-600 hover:text-white hover:bg-red-600 transition px-2 py-0.5 rounded">ออก</button>
   </div>
 `;
+
 
 
 
@@ -148,12 +150,18 @@
 
   window.logout = () => signOut(auth);
 
-  async function loadRegistrations() {
-    const res = await fetch("https://warranty-api-umg2.onrender.com/api/registrations");
-    const data = await res.json();
-    registrationData = data.registrations;
-    renderRegistrationTable();
-  }
+ async function loadRegistrations() {
+  const res = await fetch("https://warranty-api-umg2.onrender.com/api/registrations");
+  const data = await res.json();
+
+  registrationData = data.registrations.map(r => ({
+    ...r,
+    registeredAtFormatted: formatDate(r.registeredAt)
+  }));
+
+  renderRegistrationTable();
+}
+
 
   async function loadClaims() {
     const res = await fetch("https://warranty-api-umg2.onrender.com/api/claims");
@@ -162,7 +170,7 @@
     renderClaimTable();
   }
 
-  function formatDate(ts) {
+function formatDate(ts) {
   try {
     if (!ts) return "-";
 
@@ -172,12 +180,12 @@
     }
 
     if (typeof ts === "object") {
-      // Firestore Timestamp JSON
-      if ("seconds" in ts) {
-        return new Date(ts.seconds * 1000).toISOString().split("T")[0];
+      // ✅ รองรับ Firestore Timestamp ที่ใช้ seconds/nanoseconds
+      if ("_seconds" in ts || "seconds" in ts) {
+        const seconds = ts.seconds || ts._seconds;
+        return new Date(seconds * 1000).toISOString().split("T")[0];
       }
 
-      // Timestamp ที่มี .toDate()
       if (typeof ts.toDate === "function") {
         return ts.toDate().toISOString().split("T")[0];
       }
@@ -188,6 +196,7 @@
     return "-";
   }
 }
+
 
 function renderSource(source) {
   if (source === "tiktok") {
@@ -224,11 +233,16 @@ function renderSource(source) {
           <td class="border px-2 py-1">${renderSource(item.source)}</td>
 
           <td class="border px-2 py-1 text-center">
-            <button onclick='showDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})' class="text-blue-600 hover:underline">👁</button>
-          </td>
-          <td class="border px-2 py-1 text-center">
-            <button onclick="deleteRegistration('${item.orderId}')" class="text-red-600 hover:underline">🗑</button>
-          </td>
+  <button onclick='showDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})' class="text-blue-600 hover:text-blue-800 text-lg">
+    <i class="fas fa-eye"></i>
+  </button>
+</td>
+<td class="border px-2 py-1 text-center">
+  <button onclick="deleteClaim('${item.id}')" class="text-red-600 hover:text-red-800 text-lg">
+    <i class="fas fa-trash-alt"></i>
+  </button>
+</td>
+
         </tr>`;
     });
   }
@@ -259,11 +273,16 @@ function renderSource(source) {
           </td>
           <td class="border px-2 py-1">${renderSource(item.source)}</td>
           <td class="border px-2 py-1 text-center">
-            <button onclick='showDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})' class="text-blue-600 hover:underline">👁</button>
-          </td>
-          <td class="border px-2 py-1 text-center">
-            <button onclick="deleteClaim('${item.id}')" class="text-red-600 hover:underline">🗑</button>
-          </td>
+  <button onclick='showDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})' class="text-blue-600 hover:text-blue-800 text-lg">
+    <i class="fas fa-eye"></i>
+  </button>
+</td>
+<td class="border px-2 py-1 text-center">
+  <button onclick="deleteClaim('${item.id}')" class="text-red-600 hover:text-red-800 text-lg">
+    <i class="fas fa-trash-alt"></i>
+  </button>
+</td>
+
         </tr>`;
     });
   }
@@ -305,47 +324,46 @@ function renderSource(source) {
   const modal = document.getElementById("detailModal");
   const content = document.getElementById("modalContent");
 
-  // ✅ แปลง address แบบเรียบร้อย
-  const address =
-  data.address && typeof data.address === "object"
-    ? [
-        data.address.line,
-        data.address.subDistrict,
-        data.address.district,
-        data.address.province,
-        data.address.postcode,
-      ]
-        .filter((v) => !!v)
-        .join(", ")
+  const address = data.address && typeof data.address === "object"
+    ? [data.address.line, data.address.subDistrict, data.address.district, data.address.province, data.address.postcode].filter(v => !!v).join(", ")
     : data.address || "-";
 
+  const userId = data.userId && data.userId.length > 20 ? `${data.userId.slice(0, 10)}...` : data.userId || "-";
 
-  // ✅ ตัด userId ให้ดูสั้น
-  const userId =
-    data.userId && data.userId.length > 20
-      ? `${data.userId.slice(0, 10)}...`
-      : data.userId || "-";
+  const isClaim = !!data.claimedAt; // ✅ ถ้ามี claimedAt ถือว่าเป็นฝั่งเคลม
 
-  // ✅ registeredAt → format หรือ "-"
-  const registeredAt = data.registeredAt
-    ? formatDate(data.registeredAt)
-    : "-";
-
+  if (isClaim) {
   content.innerHTML = `
     <div><strong>orderId</strong>: ${data.orderId}</div>
-    <div><strong>name</strong>: ${data.name || "-"}</div>
-    <div><strong>phone</strong>: ${data.phone || "-"}</div>
-    <div><strong>email</strong>: ${data.email || "-"}</div>
-    <div><strong>userId</strong>: ${userId}</div>
-    <div><strong>address</strong>: ${address}</div>
-    <div><strong>registeredAt</strong>: ${registeredAt}</div>
-    <div><strong>warrantyUntil</strong>: ${data.warrantyUntil || "-"}</div>
-    <div><strong>status</strong>: ${data.status || "-"}</div>
-    <div><strong>reason</strong>: ${data.reason || "-"}</div>
+    <div><strong>ชื่อ</strong>: ${data.name || "-"}</div>
+    <div><strong>เบอร์</strong>: ${data.phone || "-"}</div>
+    <div><strong>อีเมล</strong>: ${data.email || "-"}</div>
+    <div><strong>ที่อยู่</strong>: ${address}</div>
+    <div><strong>ลงทะเบียนเมื่อ</strong>: ${formatDate(data.registeredAt)}</div>
+    <div><strong>หมดประกัน</strong>: ${data.warrantyUntil || "-"}</div>
+    <div><strong>เหตุผล</strong>: ${data.reason || "-"}</div>
+    <div><strong>สถานะ</strong>: ${data.status || "-"}</div>
+    <div><strong>แจ้งเคลมเมื่อ</strong>: ${formatDate(data.claimedAt)}</div>
   `;
+}
+else {
+    // 👉 ลงทะเบียนสินค้า
+    content.innerHTML = `
+      <div><strong>orderId</strong>: ${data.orderId}</div>
+      <div><strong>name</strong>: ${data.name || "-"}</div>
+      <div><strong>phone</strong>: ${data.phone || "-"}</div>
+      <div><strong>email</strong>: ${data.email || "-"}</div>
+      <div><strong>userId</strong>: ${userId}</div>
+      <div><strong>address</strong>: ${address}</div>
+      <div><strong>registeredAt</strong>: ${formatDate(data.registeredAt)}</div>
+      <div><strong>warrantyUntil</strong>: ${data.warrantyUntil || "-"}</div>
+    `;
+  }
+
   modal.classList.remove("hidden");
   modal.classList.add("flex");
 };
+
 
 
   window.closeModal = () => {

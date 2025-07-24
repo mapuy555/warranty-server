@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>อัปโหลดคำสั่งซื้อ Shopee</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
   <style>
   :root {
     --shopee-orange: #ee4d2d;
@@ -98,13 +100,14 @@
       if (!user) {
         window.location.href = "admin-login.html";
       } else {
-         document.getElementById("admin-info").innerHTML = `
+        document.getElementById("admin-info").innerHTML = `
   <div class="flex items-center gap-2 bg-white text-gray-800 px-3 py-1 rounded-md shadow text-xs">
-    <span class="text-lg">👤</span>
+    <i class="fas fa-user-circle text-lg text-gray-600"></i>
     <span class="hidden sm:inline">${user.email}</span>
-   <button onclick="logout()" class="text-red-600 hover:text-white hover:bg-red-600 transition px-2 py-0.5 rounded">ออก</button>
+    <button onclick="logout()" class="text-red-600 hover:text-white hover:bg-red-600 transition px-2 py-0.5 rounded">ออก</button>
   </div>
 `;
+
         loadOrders();
       }
     });

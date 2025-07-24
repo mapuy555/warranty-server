@@ -2,12 +2,13 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
   <title>ตรวจสอบข้อมูลก่อนยืนยัน</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
   <style>
     body {
-      font-family: "Segoe UI", sans-serif;
+      font-family: 'Prompt', sans-serif;
       max-width: 400px;
       margin: 30px auto;
       padding: 20px;
@@ -26,6 +27,7 @@
       margin: 6px 0;
     }
     button {
+      font-family: 'Prompt', sans-serif;
       width: 100%;
       padding: 12px;
       font-size: 16px;
@@ -52,8 +54,8 @@
     <p><strong>วันที่สั่งซื้อ:</strong> <span id="purchaseDate">-</span></p>
   </div>
 
-  <button id="confirmBtn">✅ ยืนยันลงทะเบียน</button>
-  <button id="editBtn">🔁 กลับไปแก้ไข</button>
+  <button id="confirmBtn">ยืนยันลงทะเบียน</button>
+  <button id="editBtn">กลับไปแก้ไข</button>
   <p class="error" id="errorMsg"></p>
 
   <script>

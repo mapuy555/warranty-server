@@ -307,15 +307,24 @@ app.post("/api/claim", async (req, res) => {
     }
 
     // ✅ เพิ่ม source ลง claims
-    await db.collection("claims").add({
-      userId,
-      orderId,
-      reason,
-      contact,
-      status: "อยู่ระหว่างดำเนินการ",
-      claimedAt: admin.firestore.Timestamp.now(),
-      source: orderData.source || "ไม่ระบุ" // ✅ เพิ่มแหล่งที่มา
-    });
+  await db.collection("claims").add({
+  userId,
+  orderId,
+  reason,
+  contact,
+  status: "อยู่ระหว่างดำเนินการ",
+  claimedAt: admin.firestore.Timestamp.now(),
+  source: orderData.source || "ไม่ระบุ",
+
+  // ✅ เพิ่มข้อมูลจากการลงทะเบียน
+  name: regData.name || "-",
+  email: regData.email || "-",
+  phone: regData.phone || "-",
+  address: regData.address || "-",
+  registeredAt: regData.registeredAt || null,
+  warrantyUntil: regData.warrantyUntil || "-"
+});
+
 
     // ✅ สร้าง Flex Message สำหรับแจ้งเตือน
     const newClaimQuery = await db.collection("claims")
