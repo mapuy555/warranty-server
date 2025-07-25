@@ -52,30 +52,30 @@ async function getTrackingInfo(slug, trackingNumber) {
 // 🔧 ฟังก์ชันคำนวณวันหมดประกันจาก AfterShip
 async function getWarrantyFromTracking(slug, trackingNumber) {
   try {
-    const url = `https://api.aftership.com/v4/trackings/${slug}/${trackingNumber}`;
-    const res = await axios.get(url, {
+    const res = await axios.get(`https://api.aftership.com/v4/trackings/${slug}/${trackingNumber}`, {
       headers: {
         "aftership-api-key": process.env.AFTERSHIP_API_KEY,
         "Content-Type": "application/json"
       }
     });
 
-    const deliveredAt = res.data.data.tracking?.delivered_at;
-    if (!deliveredAt) return null;
+    const checkpoints = res.data?.data?.tracking?.checkpoints || [];
+    const deliveredCheckpoint = checkpoints.find(cp => cp.tag === "Delivered");
 
-    const date = new Date(deliveredAt);
-    const warrantyUntil = new Date(date);
-    warrantyUntil.setDate(warrantyUntil.getDate() + 365); // ปรับเป็น 180 หรือ 90 ได้
+    if (deliveredCheckpoint?.checkpoint_time) {
+      const deliveredDate = new Date(deliveredCheckpoint.checkpoint_time);
+      const warrantyUntil = new Date(deliveredDate);
+      warrantyUntil.setDate(warrantyUntil.getDate() + 7);
 
-    return {
-      deliveredAt: date,
-      warrantyUntil
-    };
+      return { deliveredAt: deliveredDate, warrantyUntil };
+    }
   } catch (err) {
-    console.warn("⚠️ AfterShip Error:", err.response?.data || err.message);
-    return null;
+    console.warn("⚠️ ไม่สามารถดึงข้อมูลจาก AfterShip:", err.message);
   }
+
+  return null; // ถ้าไม่เจอ
 }
+
 
 
 // ✅ Helper
@@ -347,6 +347,7 @@ app.post("/api/register", async (req, res) => {
       address,
       registeredAt: admin.firestore.Timestamp.fromDate(registeredAt),
       warrantyUntil: admin.firestore.Timestamp.fromDate(warrantyUntil),
+      deliveredAt: deliveredAt ? admin.firestore.Timestamp.fromDate(deliveredAt) : null, // ✅ เพิ่มตรงนี้
       source,
     });
 
