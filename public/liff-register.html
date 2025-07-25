@@ -6,6 +6,7 @@
   <title>ลงทะเบียนรับประกันสินค้า</title>
   <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     body {
       font-family: 'Prompt', sans-serif;
@@ -46,6 +47,7 @@
       margin-top: 10px;
     }
     #lineName {
+      font-family: 'Prompt', sans-serif;
       text-align: center;
       font-size: 15px;
       color: #555;
@@ -100,7 +102,8 @@
 
       const profile = await liff.getProfile();
       userId = profile.userId;
-      document.getElementById("lineName").innerText = `👤 คุณ: ${profile.displayName}`;
+      document.getElementById("lineName").innerHTML = `<i class="fas fa-user-circle fa-lg text-gray-600"></i> คุณ: ${profile.displayName}`;
+
 
       await fetch(`${apiBase}/api/user`, {
         method: "POST",
@@ -148,12 +151,12 @@
         };
 
         if (!/^0\d{9}$/.test(phone)) {
-          errorMsg.innerText = "📵 กรุณากรอกเบอร์โทร 10 หลักให้ถูกต้อง";
+          errorMsg.innerHTML = `<i class="fas fa-phone-slash text-red-500"></i> กรุณากรอกเบอร์โทร 10 หลักให้ถูกต้อง`;
           return;
         }
 
         if (!isValidEmail(email)) {
-          errorMsg.innerText = "📧 อีเมลไม่ถูกต้อง";
+          errorMsg.innerHTML = `<i class="fas fa-envelope text-red-500"></i> อีเมลไม่ถูกต้อง`;
           return;
         }
 

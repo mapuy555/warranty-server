@@ -22,6 +22,62 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
+const AFTERSHIP_API_KEY = process.env.AFTERSHIP_API_KEY; // ใส่ใน .env
+const AFTERSHIP_BASE_URL = "https://api.aftership.com/v4";
+
+async function getTrackingInfo(slug, trackingNumber) {
+  try {
+    const response = await axios.get(
+      `${AFTERSHIP_BASE_URL}/trackings/${slug}/${trackingNumber}`,
+      {
+        headers: {
+          "aftership-api-key": AFTERSHIP_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const tracking = response.data.data.tracking;
+
+    // 📦 คืนวันที่ Delivered ถ้ามี
+    const deliveredDate = tracking?.delivered_at;
+    return deliveredDate ? new Date(deliveredDate) : null;
+
+  } catch (error) {
+    console.error("❌ AfterShip API error:", error.response?.data || error.message);
+    return null;
+  }
+}
+
+// 🔧 ฟังก์ชันคำนวณวันหมดประกันจาก AfterShip
+async function getWarrantyFromTracking(slug, trackingNumber) {
+  try {
+    const url = `https://api.aftership.com/v4/trackings/${slug}/${trackingNumber}`;
+    const res = await axios.get(url, {
+      headers: {
+        "aftership-api-key": process.env.AFTERSHIP_API_KEY,
+        "Content-Type": "application/json"
+      }
+    });
+
+    const deliveredAt = res.data.data.tracking?.delivered_at;
+    if (!deliveredAt) return null;
+
+    const date = new Date(deliveredAt);
+    const warrantyUntil = new Date(date);
+    warrantyUntil.setDate(warrantyUntil.getDate() + 365); // ปรับเป็น 180 หรือ 90 ได้
+
+    return {
+      deliveredAt: date,
+      warrantyUntil
+    };
+  } catch (err) {
+    console.warn("⚠️ AfterShip Error:", err.response?.data || err.message);
+    return null;
+  }
+}
+
+
 // ✅ Helper
 function calculateWarrantyUntil(days) {
   const today = new Date();
@@ -38,41 +94,104 @@ function formatDate(dateField) {
 }
 
 function createFlexMessage(data, orderData) {
-  const itemTexts = orderData.items?.map(item => {
-    return {
-      type: "text",
-      text: `• ${item.productName} (${item.quantity || 1} ชิ้น)`,
-      wrap: true
-    };
-  }) || [];
-
   return {
     type: "flex",
-    altText: "ลงทะเบียนสำเร็จ ✅",
+    altText: "ยืนยันการลงทะเบียนรับประกันสินค้า",
     contents: {
       type: "bubble",
-      body: {
+      size: "mega",
+      header: {
         type: "box",
         layout: "vertical",
         contents: [
-          { type: "text", text: "✅ ลงทะเบียนสำเร็จ", weight: "bold", size: "lg", color: "#06C755" },
-          { type: "separator", margin: "md" },
-          { type: "text", text: `📌 ชื่อ: ${data.name}` },
-          { type: "text", text: `📞 เบอร์: ${data.phone}` },
-          { type: "text", text: `📧 อีเมล: ${data.email}` },
-          { type: "text", text: `🗒️ คำสั่งซื้อ: ${data.orderId}` },
-          { type: "text", text: `📍 ที่อยู่: ${data.address.line}, ${data.address.subDistrict}, ${data.address.district}, ${data.address.province} ${data.address.postcode}` },
-          { type: "text", text: `🗓️ วันที่ลงทะเบียน: ${data.registeredAt}` },
-          { type: "text", text: `⏳ หมดประกัน: ${data.warrantyUntil}` },
-          { type: "separator", margin: "md" },
-          { type: "text", text: `📦 รายการสินค้า:` },
-          ...itemTexts,
-          { type: "text", text: `🗓️ วันที่สั่งซื้อ: ${formatDate(orderData.purchaseDate)}` }
+          {
+            type: "text",
+            text: "📦 ลงทะเบียนสำเร็จ",
+            weight: "bold",
+            size: "lg",
+            color: "#1DB446"
+          }
         ]
+      },
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "sm",
+        contents: [
+          {
+            type: "text",
+            text: `ชื่อ: ${data.name}`,
+            wrap: true
+          },
+          {
+            type: "text",
+            text: `เบอร์: ${data.phone}`,
+            wrap: true
+          },
+          {
+            type: "text",
+            text: `อีเมล: ${data.email}`,
+            wrap: true
+          },
+          {
+            type: "text",
+            text: `เลขคำสั่งซื้อ: ${data.orderId}`,
+            wrap: true
+          },
+          {
+            type: "text",
+            text: `ที่อยู่: ${data.address}`,
+            wrap: true
+          },
+          {
+            type: "separator",
+            margin: "md"
+          },
+          {
+            type: "text",
+            text: `📅 วันที่ลงทะเบียน: ${data.registeredAt}`,
+            size: "sm",
+            color: "#999999"
+          },
+          {
+            type: "text",
+            text: `🛡️ รับประกันถึง: ${data.warrantyUntil}`,
+            size: "sm",
+            color: "#ff5555",
+            weight: "bold"
+          },
+          ...(orderData?.items?.map((item, i) => ({
+            type: "box",
+            layout: "baseline",
+            spacing: "sm",
+            margin: "md",
+            contents: [
+              {
+                type: "text",
+                text: `สินค้า ${i + 1}:`,
+                flex: 1,
+                size: "sm"
+              },
+              {
+                type: "text",
+                text: `${item.productName} (${item.quantity})`,
+                flex: 4,
+                size: "sm",
+                wrap: true
+              }
+            ]
+          })) || [])
+        ]
+      },
+      styles: {
+        header: {
+          backgroundColor: "#F0FDF4"
+        }
       }
     }
   };
 }
+
 
 function createAdminClaimCard(claimId, orderId, reason, status, claimedAt, contact) {
   return {
@@ -176,17 +295,19 @@ app.get("/api/order/:orderId", async (req, res) => {
 app.post("/api/register", async (req, res) => {
   try {
     const { userId, name, phone, email, orderId, address } = req.body;
+
     const existing = await db.collection("registrations").doc(orderId).get();
     if (existing.exists) {
       return res.status(400).json({ message: "🔁 คำสั่งซื้อนี้ลงทะเบียนแล้ว" });
     }
 
-    // 🔍 ลองค้นหาใน orders
+    // 🔍 ค้นหา order จาก Shopee หรือ TikTok
     let orderDoc = await db.collection("orders").doc(orderId).get();
+    let source = "shopee";
 
-    // 🔁 ถ้ายังไม่เจอ ลองใน orders_tiktok
     if (!orderDoc.exists) {
       orderDoc = await db.collection("orders_tiktok").doc(orderId).get();
+      source = "tiktok";
     }
 
     if (!orderDoc.exists) {
@@ -194,9 +315,29 @@ app.post("/api/register", async (req, res) => {
     }
 
     const orderData = orderDoc.data();
-    const registeredAt = new Date();
-    const warrantyUntil = calculateWarrantyUntil(7);
 
+    // 📦 พยายามดึงวันจัดส่งจาก AfterShip
+    let warrantyUntil = null;
+    let deliveredAt = null;
+
+    if (orderData.trackingNumber && orderData.slug) {
+      const result = await getWarrantyFromTracking(orderData.slug, orderData.trackingNumber);
+      if (result) {
+        deliveredAt = result.deliveredAt;
+        warrantyUntil = result.warrantyUntil;
+      }
+    }
+
+    // 🔁 fallback หากไม่มี tracking info ให้กำหนด default 7 วัน
+    if (!warrantyUntil) {
+      const fallback = new Date();
+      fallback.setDate(fallback.getDate() + 7);
+      warrantyUntil = fallback;
+    }
+
+    const registeredAt = new Date();
+
+    // 📝 บันทึกลง Firestore
     await db.collection("registrations").doc(orderId).set({
       userId,
       name,
@@ -205,10 +346,11 @@ app.post("/api/register", async (req, res) => {
       orderId,
       address,
       registeredAt: admin.firestore.Timestamp.fromDate(registeredAt),
-      warrantyUntil,
-      source: orderData.source || "unknown"
+      warrantyUntil: admin.firestore.Timestamp.fromDate(warrantyUntil),
+      source,
     });
 
+    // ✉️ สร้าง Flex Message
     const flexMessage = createFlexMessage({
       userId,
       name,
@@ -217,9 +359,10 @@ app.post("/api/register", async (req, res) => {
       orderId,
       address,
       registeredAt: registeredAt.toISOString().split("T")[0],
-      warrantyUntil,
+      warrantyUntil: warrantyUntil.toISOString().split("T")[0],
     }, orderData);
 
+    // 📤 ส่งกลับ LINE
     await axios.post("https://api.line.me/v2/bot/message/push", {
       to: userId,
       messages: [flexMessage],
@@ -236,6 +379,7 @@ app.post("/api/register", async (req, res) => {
     res.status(500).json({ message: "เกิดข้อผิดพลาดในระบบ" });
   }
 });
+
 
 
 // ✅ ตรวจสอบสถานะลงทะเบียนและเคลม
@@ -496,6 +640,20 @@ function parseExcelDate(value) {
   return isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function mapShippingProviderToSlug(name) {
+  const normalized = name.toLowerCase().trim();
+
+  if (normalized.includes("flash")) return "flash-express";
+  if (normalized.includes("spx")) return "spx";
+  if (normalized.includes("kerry")) return "kerry-express";
+  if (normalized.includes("j&t")) return "jtexpress";
+  if (normalized.includes("j&t express")) return "jtexpress";
+  if (normalized.includes("ninja")) return "ninjavan";
+  if (normalized.includes("best")) return "best-express";
+  if (normalized.includes("ไปรษณีย์") || normalized.includes("post")) return "thailand-post";
+
+  return "unknown";
+}
 
 
 app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
@@ -508,49 +666,51 @@ app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
     let added = 0;
     let skipped = 0;
 
+    function extractSlugFromShopee(shippingOption) {
+      if (!shippingOption) return null;
+      if (shippingOption.includes("Flash")) return "flash";
+      if (shippingOption.includes("SPX")) return "spx";
+      if (shippingOption.includes("J&T")) return "jnt-express";
+      return null;
+    }
+
     for (const row of data) {
       const orderId = row["หมายเลขคำสั่งซื้อ"];
       if (!orderId) continue;
 
       const orderRef = db.collection("orders").doc(orderId);
       const existing = await orderRef.get();
+
+      const trackingNumber = row["*หมายเลขติดตามพัสดุ"]?.toString().trim() || "";
+      const shippingOption = row["ตัวเลือกการจัดส่ง"] || "";
+      const slug = extractSlugFromShopee(shippingOption);
+
+      const item = {
+        productName: row["ชื่อสินค้า"] || "",
+        quantity: row["จำนวน"] || 1,
+        sku: row["เลขอ้างอิง SKU (SKU Reference No.)"] || "",
+        price: row["ราคาขาย"] || 0,
+      };
+
       if (existing.exists) {
-  const existingData = existing.data();
-  const newItem = {
-    productName: row["ชื่อสินค้า"] || "",
-    quantity: row["จำนวน"] || 1,
-    sku: row["เลขอ้างอิง SKU (SKU Reference No.)"] || "",
-    price: row["ราคาขาย"] || 0,
-  };
-
-  // อัปเดตเข้า array items เดิม โดยใช้ arrayUnion เพื่อไม่ให้ซ้ำ
-  await orderRef.update({
-    items: admin.firestore.FieldValue.arrayUnion(newItem)
-  });
-
-  skipped++; // นับว่าอัปเดต ไม่ได้เพิ่มใหม่
-  continue;
-}
-
+        await orderRef.update({
+          items: admin.firestore.FieldValue.arrayUnion(item)
+        });
+        skipped++;
+        continue;
+      }
 
       await orderRef.set({
-  orderId,
-  name: row["ชื่อผู้รับ"] || "",
-  status: row["สถานะการสั่งซื้อ"] || "",
-  purchaseDate: parseExcelDate(row["เวลาการชำระสินค้า"]),
-  items: [
-    {
-      productName: row["ชื่อสินค้า"] || "",
-      quantity: row["จำนวน"] || 1,
-      sku: row["เลขอ้างอิง SKU (SKU Reference No.)"] || "",
-      price: row["ราคาขาย"] || 0,
-    }
-  ],
-  source: "shopee", // ✅ เพิ่มบรรทัดนี้
-  createdAt: admin.firestore.FieldValue.serverTimestamp()
-});
-
-
+        orderId,
+        name: row["ชื่อผู้รับ"] || "",
+        status: row["สถานะการสั่งซื้อ"] || "",
+        purchaseDate: parseExcelDate(row["เวลาการชำระสินค้า"]),
+        items: [item],
+        trackingNumber,
+        slug,
+        source: "shopee",
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
 
       added++;
     }
@@ -563,6 +723,8 @@ app.post("/api/upload-orders", upload.single("file"), async (req, res) => {
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการอัปโหลดคำสั่งซื้อ" });
   }
 });
+
+
 
 // ✅ แจ้งเตือนสถานะเคลมผ่าน Flex Message
 app.post("/api/notify-status-change", async (req, res) => {
@@ -624,10 +786,6 @@ app.get("/api/liff-id-register", (req, res) => {
 });
 
 // ✅ สำหรับหน้า claim
-app.get("/api/liff-id-claim", (req, res) => {
-  res.json({ liffId: process.env.LIFF_ID_CLAIM });
-});
-
 app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "ไม่ได้แนบไฟล์" });
@@ -636,57 +794,55 @@ app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) =>
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
 
-
-
     const batch = db.batch();
     let successCount = 0;
 
+    const slugMap = {
+      "J&T Express": "jnt-express",
+      "Flash Express": "flash",
+      "SPX Express": "spx"
+    };
+
     rows.forEach((row) => {
       const orderId = row["Order ID"]?.toString().trim();
-
-      if (orderId === "Platform unique order ID.") return;
-
-
-      if (!orderId) {
-        console.warn("⚠️ ข้ามรายการ: ไม่มี Order ID", row);
-        return;
-      }
+      if (orderId === "Platform unique order ID." || !orderId) return;
 
       const name = row["Recipient"]?.toString().trim() || "-";
       const productName = row["Product Name"]?.toString().trim() || "-";
       const status = row["Order Status"]?.toString().trim() || "-";
+      const trackingNumber = row["Tracking ID"]?.toString().trim() || "";
+      const slug = slugMap[row["Shipping Provider Name"]] || null;
 
       // 🔄 แปลงวันที่
       let purchaseDate = null;
-      if (row["Paid Time"]) {
-        try {
-          const raw = row["Paid Time"];
-          let date = null;
-          if (typeof raw === "number") {
-            date = new Date((raw - 25569) * 86400 * 1000);
-          } else if (typeof raw === "string") {
-            if (raw.includes("/")) {
-              const [d, m, yAndTime] = raw.split("/");
-              const [y, time] = yAndTime.split(" ");
-              const isoString = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T${time}`;
-              date = new Date(isoString);
-            } else {
-              date = new Date(raw.replace(" ", "T"));
-            }
+      try {
+        const raw = row["Paid Time"];
+        let date = null;
+        if (typeof raw === "number") {
+          date = new Date((raw - 25569) * 86400 * 1000);
+        } else if (typeof raw === "string") {
+          if (raw.includes("/")) {
+            const [d, m, yAndTime] = raw.split("/");
+            const [y, time] = yAndTime.split(" ");
+            date = new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T${time}`);
+          } else {
+            date = new Date(raw.replace(" ", "T"));
           }
-          if (date && !isNaN(date)) {
-            purchaseDate = admin.firestore.Timestamp.fromDate(date);
-          }
-        } catch (err) {
-          console.warn("⚠️ แปลง Paid Time ไม่ได้:", row["Paid Time"]);
         }
+        if (date && !isNaN(date)) {
+          purchaseDate = admin.firestore.Timestamp.fromDate(date);
+        }
+      } catch (err) {
+        console.warn("⚠️ แปลง Paid Time ไม่ได้:", row["Paid Time"]);
       }
 
       const ref = db.collection("orders_tiktok").doc(orderId);
-      const orderData = {
+      batch.set(ref, {
         orderId,
         name,
         status,
+        trackingNumber,
+        slug,
         purchaseDate,
         items: [
           {
@@ -696,9 +852,8 @@ app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) =>
         ],
         source: "tiktok",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      };
+      }, { merge: true });
 
-      batch.set(ref, orderData, { merge: true });
       successCount++;
     });
 
@@ -710,6 +865,46 @@ app.post("/api/upload-orders-tiktok", upload.single("file"), async (req, res) =>
     console.error("⛔ Upload TikTok Error:", err);
     res.status(500).json({ message: "เกิดข้อผิดพลาดในการอัปโหลด TikTok" });
   }
+});
+
+
+app.post("/api/check-delivery-date", async (req, res) => {
+  const { orderId, source } = req.body;
+  const collection = source === "tiktok" ? "orders_tiktok" : "orders";
+  const orderRef = db.collection(collection).doc(orderId);
+  const orderDoc = await orderRef.get();
+
+  if (!orderDoc.exists) {
+    return res.status(404).json({ message: "ไม่พบคำสั่งซื้อ" });
+  }
+
+  const data = orderDoc.data();
+  const { trackingNumber, slug } = data;
+
+  if (!trackingNumber || !slug || slug === "unknown") {
+    return res.status(400).json({ message: "ไม่มีข้อมูลขนส่งหรือยังไม่รองรับ" });
+  }
+
+  const deliveredDate = await getTrackingInfo(slug, trackingNumber);
+
+  if (!deliveredDate) {
+    return res.status(404).json({ message: "ยังไม่มีข้อมูลวันจัดส่งสำเร็จ" });
+  }
+
+  // 🧮 คำนวณวันหมดประกัน (เช่น 365 วัน)
+  const warrantyUntil = new Date(deliveredDate);
+  warrantyUntil.setDate(warrantyUntil.getDate() + 365);
+
+  await orderRef.update({
+    deliveredDate: admin.firestore.Timestamp.fromDate(deliveredDate),
+    warrantyUntil: admin.firestore.Timestamp.fromDate(warrantyUntil),
+  });
+
+  res.json({
+    message: "อัปเดตวันหมดประกันสำเร็จ ✅",
+    deliveredDate,
+    warrantyUntil,
+  });
 });
 
 

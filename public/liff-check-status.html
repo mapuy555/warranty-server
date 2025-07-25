@@ -2,11 +2,13 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
   <title>ตรวจสอบสถานะสินค้า</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     body {
-      font-family: "Segoe UI", sans-serif;
+      font-family: 'Prompt', sans-serif;
       max-width: 400px;
       margin: 30px auto;
       padding: 20px;
@@ -15,6 +17,7 @@
       box-shadow: 0 0 12px rgba(0,0,0,0.1);
     }
     input, button {
+      font-family: 'Prompt', sans-serif;
       width: 100%;
       padding: 10px;
       margin-top: 12px;
@@ -24,6 +27,7 @@
       box-sizing: border-box;
     }
     button {
+      font-family: 'Prompt', sans-serif;
       background-color: #06c755;
       color: white;
       border: none;
@@ -36,10 +40,14 @@
       margin-top: 20px;
     }
     .error { color: red; margin-top: 10px; }
+    h2
+    {
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-  <h2>🔍 ตรวจสอบสถานะสินค้า</h2>
+  <h2>ตรวจสอบสถานะสินค้า</h2>
 
   <input type="text" id="orderId" placeholder="กรอกเลขคำสั่งซื้อ" />
   <button onclick="checkStatus()">ตรวจสอบ</button>
@@ -72,21 +80,24 @@
 
     console.log("📦 ข้อมูลที่ได้จาก backend:", data);
 
-    let html = `<strong>เลขคำสั่งซื้อ:</strong> ${orderId}<br/>`;
+    let html = `<strong><i class="fas fa-receipt"></i> เลขคำสั่งซื้อ:</strong> ${orderId}<br/>`;
 
-    if (data.registration) {
-      html += `✅ ลงทะเบียนแล้วเมื่อ: ${formatDate(data.registration.registeredAt)}<br/>`;
-      html += `⏳ หมดประกัน: ${data.registration.warrantyUntil}<br/>`;
-    } else {
-      html += `⚠️ ยังไม่ลงทะเบียนรับประกัน<br/>`;
-    }
+if (data.registration) {
+  html += `<i class="fas fa-check-circle text-green-500"></i> ลงทะเบียนแล้วเมื่อ: ${formatDate(data.registration.registeredAt)}<br/>`;
+  html += `<i class="fas fa-hourglass-half text-yellow-600"></i> หมดประกัน: ${data.registration.warrantyUntil}<br/>`;
+} else {
+  html += `<i class="fas fa-exclamation-triangle text-orange-500"></i> ยังไม่ลงทะเบียนรับประกัน<br/>`;
+}
 
-    if (data.claims && data.claims.length > 0) {
-      const latestClaim = data.claims[0]; // เอาเคลมล่าสุด
-      html += `🔧 เคยแจ้งเคลมแล้ว<br/>📅 วันที่เคลม: ${formatDate(latestClaim.claimedAt)}<br/>📌 สถานะ: ${latestClaim.status}<br/>`;
-    } else {
-      html += `📭 ยังไม่เคยเคลมสินค้า<br/>`;
-    }
+if (data.claims && data.claims.length > 0) {
+  const latestClaim = data.claims[0];
+  html += `<i class="fas fa-tools text-blue-700"></i> เคยแจ้งเคลมแล้ว<br/>`;
+  html += `<i class="fas fa-calendar-alt text-purple-500"></i> วันที่เคลม: ${formatDate(latestClaim.claimedAt)}<br/>`;
+  html += `<i class="fas fa-info-circle text-gray-700"></i> สถานะ: ${latestClaim.status}<br/>`;
+} else {
+  html += `<i class="fas fa-envelope-open-text text-gray-500"></i> ยังไม่เคยเคลมสินค้า<br/>`;
+}
+
 
     resultBox.innerHTML = html;
     resultBox.style.display = "block";

@@ -6,6 +6,7 @@
   <title>ตรวจสอบข้อมูลก่อนยืนยัน</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     body {
       font-family: 'Prompt', sans-serif;
@@ -69,9 +70,10 @@
     try {
       data = JSON.parse(decodeURIComponent(params.get("data")));
     } catch (err) {
-      errorMsg.innerText = "❌ ข้อมูลไม่ถูกต้อง กรุณากลับไปกรอกใหม่";
+      errorMsg.innerHTML = `<i class="fas fa-times-circle text-red-500"></i> ข้อมูลไม่ถูกต้อง กรุณากลับไปกรอกใหม่`;
       document.getElementById("confirmBtn").disabled = true;
-      document.getElementById("editBtn").innerText = "🔙 กลับหน้าหลัก";
+      document.getElementById("editBtn").innerHTML = `<i class="fas fa-arrow-left"></i> กลับหน้าหลัก`;
+
       throw err;
     }
 
@@ -129,7 +131,8 @@ checkIfAlreadyRegistered(data.orderId);
     // กดยืนยันลงทะเบียน
     confirmBtn.addEventListener("click", async () => {
       confirmBtn.disabled = true;
-      confirmBtn.innerText = "⏳ กำลังส่ง...";
+      confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> กำลังส่ง...`;
+
       errorMsg.innerText = "";
 
       try {
@@ -148,10 +151,12 @@ checkIfAlreadyRegistered(data.orderId);
           errorMsg.innerText = result.message || "❌ ลงทะเบียนไม่สำเร็จ";
         }
       } catch (err) {
-        errorMsg.innerText = "❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์";
+        errorMsg.innerHTML = `<i class="fas fa-times-circle text-red-500"></i> ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์`;
+
       } finally {
         confirmBtn.disabled = false;
-        confirmBtn.innerText = "✅ ยืนยันลงทะเบียน";
+        confirmBtn.innerHTML = `<i class="fas fa-check-circle"></i> ยืนยันลงทะเบียน`;
+
       }
     });
 
@@ -166,7 +171,8 @@ async function checkIfAlreadyRegistered(orderId) {
     if (res.ok) {
       const result = await res.json();
       if (result && result.registered) {
-        errorMsg.innerText = "⚠️ คำสั่งซื้อนี้ได้ลงทะเบียนไปแล้ว";
+        errorMsg.innerHTML = `<i class="fas fa-exclamation-triangle text-yellow-500"></i> คำสั่งซื้อนี้ได้ลงทะเบียนไปแล้ว`;
+
         confirmBtn.disabled = true;
         confirmBtn.style.backgroundColor = "#aaa";
       }

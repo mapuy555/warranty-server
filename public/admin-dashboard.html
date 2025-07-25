@@ -31,18 +31,12 @@
     <a href="admin-registrations.html" class="hover:text-[var(--admin-black)]">ลงทะเบียน</a>
     <a href="admin-upload.html" class="bg-white text-[#ee4d2d] border border-[#ee4d2d] hover:bg-[#ee4d2d] hover:text-white px-3 py-1 rounded-md shadow transition">Shopee</a>
     <a href="admin-upload-tiktok.html" class="bg-white text-black border border-gray-400 hover:bg-[#121212] hover:text-white px-3 py-1 rounded-md shadow transition">TikTok</a>
-
-    <!-- ✅ ย้าย admin-info มาต่อท้าย -->
     <div id="admin-info" class="ml-3"></div>
   </div>
 </nav>
 
-
-
  <!-- 🧾 Main -->
   <main class="max-w-7xl mx-auto py-6 px-4">
-    
-
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- ✅ Registration Table -->
       <section class="bg-white p-5 rounded-xl shadow">
@@ -66,7 +60,6 @@
           </table>
         </div>
       </section>
-
       <!-- 📝 Claim Table -->
       <section class="bg-white p-5 rounded-xl shadow">
         <h2 class="text-lg font-semibold text-[var(--admin-green)] mb-3">รายการแจ้งเคลม</h2>
@@ -90,18 +83,16 @@
         </div>
       </section>
     </div>
-
     <p id="status" class="mt-4 text-center text-green-600 font-medium"></p>
   </main>
-
-
     <p id="status" class="mt-4 text-center text-blue-600"></p>
   </div>
-
   <!-- 🔍 Modal ดูรายละเอียด -->
   <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-50">
     <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-lg relative">
-      <button onclick="closeModal()" class="absolute top-2 right-3 text-gray-500 hover:text-red-500 text-xl">✖</button>
+<button onclick="closeModal()" class="absolute top-2 right-3 text-gray-500 hover:text-red-500 text-xl">
+  <i class="fas fa-times"></i>
+</button>
       <h3 class="text-lg font-semibold mb-4 text-[var(--admin-green)]">รายละเอียด</h3>
       <div id="modalContent" class="text-sm space-y-2"></div>
     </div>
@@ -260,9 +251,10 @@ function renderSource(source) {
   </button>
 </td>
 <td class="border px-2 py-1 text-center">
-  <button onclick="deleteClaim('${item.id}')" class="text-red-600 hover:text-red-800 text-lg">
-    <i class="fas fa-trash-alt"></i>
-  </button>
+  <button onclick="deleteRegistration('${item.orderId}')" class="text-red-600 hover:text-red-800 text-lg">
+  <i class="fas fa-trash-alt"></i>
+</button>
+
 </td>
 
         </tr>`;
@@ -291,7 +283,9 @@ function renderSource(source) {
               <option${item.status === 'เคลมสำเร็จ' ? ' selected' : ''}>เคลมสำเร็จ</option>
               <option${item.status === 'ไม่อนุมัติ' ? ' selected' : ''}>ไม่อนุมัติ</option>
             </select>
-            <button onclick="updateStatus('${item.id}')" class="ml-1 bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-0.5 rounded text-sm">✔</button>
+            <button onclick="updateStatus('${item.id}')" class="ml-1 bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded text-sm">
+  <i class="fas fa-check"></i>
+</button>
           </td>
           <td class="border px-2 py-1">${renderSource(item.source)}</td>
           <td class="border px-2 py-1 text-center">

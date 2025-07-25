@@ -6,7 +6,8 @@
   <title>แจ้งเคลมสินค้า</title>
   <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+ <style>
     body {
       font-family: 'Prompt', sans-serif;
       max-width: 400px;
@@ -99,7 +100,8 @@
 
         const profile = await liff.getProfile();
         userId = profile.userId;
-        document.getElementById("lineName").innerText = `👤 คุณ: ${profile.displayName}`;
+        document.getElementById("lineName").innerHTML = `<i class="fas fa-user-circle fa-lg text-gray-600"></i> คุณ: ${profile.displayName}`;
+
         console.log("✅ ได้ profile:", profile);
 
       } catch (err) {
