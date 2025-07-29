@@ -475,7 +475,7 @@ app.get("/api/firebase-config", (req, res) => {
     appId: process.env.FIREBASE_APP_ID
   });
 });
-
+// ✅ ส่งรายชื่อแอดมินจาก .env
 // ✅ ส่งรายชื่อแอดมินจาก .env
 app.get("/api/allowed-admins", (req, res) => {
   const adminEmails = process.env.ALLOWED_ADMIN_EMAILS?.split(",") || [];
