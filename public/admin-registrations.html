@@ -92,9 +92,17 @@
   const firebaseConfig = await firebaseRes.json();
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  const allowedAdmins = ["suphatraprayurkha@gmail.com"];
+  
+  
 
   let registrationData = [];
+
+let allowedAdmins = [];
+
+const adminRes = await fetch("https://warranty-api-umg2.onrender.com/api/allowed-admins");
+const adminJson = await adminRes.json();
+allowedAdmins = adminJson.admins || [];
+
 
   onAuthStateChanged(auth, (user) => {
     if (!user) {
@@ -241,10 +249,6 @@ function renderSource(source) {
 
   const userId = data.userId && data.userId.length > 20 ? `${data.userId.slice(0, 10)}...` : data.userId || "-";
 
- 
-
- 
-
     // 👉 ลงทะเบียนสินค้า
     content.innerHTML = `
       <div><strong>orderId</strong>: ${data.orderId}</div>
@@ -257,11 +261,10 @@ function renderSource(source) {
       <div><strong>warrantyUntil</strong>: ${data.warrantyUntil || "-"}</div>
     `;
 
-
   modal.classList.remove("hidden");
   modal.classList.add("flex");
 
-
+  };
 
 
   window.closeModal = () => {

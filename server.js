@@ -476,6 +476,13 @@ app.get("/api/firebase-config", (req, res) => {
   });
 });
 
+// ✅ ส่งรายชื่อแอดมินจาก .env
+app.get("/api/allowed-admins", (req, res) => {
+  const adminEmails = process.env.ALLOWED_ADMIN_EMAILS?.split(",") || [];
+  res.json({ admins: adminEmails });
+});
+
+
 const multer = require("multer");
 const XLSX = require("xlsx");
 const upload = multer({ storage: multer.memoryStorage() });
