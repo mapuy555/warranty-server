@@ -324,7 +324,10 @@ app.post("/api/claim", async (req, res) => {
   phone: regData.phone || "-",
   address: regData.address || "-",
   registeredAt: regData.registeredAt || null,
-  warrantyUntil: regData.warrantyUntil || "-"
+  warrantyUntil: regData.warrantyUntil || "-",
+  
+  // ✅ เพิ่มรายการสินค้า
+  items: regData.items || [],
 });
 
 
@@ -345,13 +348,30 @@ app.post("/api/claim", async (req, res) => {
       const adminFlex = createAdminClaimCard(claimId, orderId, reason, "อยู่ระหว่างดำเนินการ", claimedAtStr, contact);
       // ❌ ไม่ส่งหาแอดมินตรงนี้ (ปิดไว้แล้ว)
     }
+const itemsList = Array.isArray(regData.items)
+  ? regData.items.map(item => `• ${item.productName || item}`).join("\n")
+  : "-";
 
     // ✅ ตอบกลับผู้ใช้ผ่าน LINE
     const messages = [
       {
-        type: "text",
-        text: `📢 ระบบได้รับการแจ้งเคลมของคุณแล้ว\nคำสั่งซื้อ: ${orderId}\nเหตุผล: ${reason}\nทีมงานจะติดต่อกลับภายใน 1-2 วันทำการ`
-      },
+  type: "flex",
+  altText: "รายละเอียดการแจ้งเคลม",
+  contents: {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        { type: "text", text: "📦 รายการที่แจ้งเคลม", weight: "bold", size: "md", wrap: true, margin: "none" },
+        { type: "text", text: `เลขคำสั่งซื้อ: ${orderId}`, size: "sm", wrap: true, margin: "md" },
+        { type: "text", text: `เหตุผล: ${reason}`, size: "sm", wrap: true },
+        { type: "text", text: `สินค้า:\n${itemsList}`, size: "sm", wrap: true, margin: "sm" },
+        { type: "text", text: `ติดต่อกลับ: ${contact}`, size: "sm", wrap: true, margin: "sm" }
+      ]
+    }
+  }
+},
       {
         type: "flex",
         altText: "กรุณาส่งรูปหลักฐานผ่านแชทนี้",

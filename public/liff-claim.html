@@ -117,40 +117,25 @@
       const errorMsg = document.getElementById("errorMsg");
       const successMsg = document.getElementById("successMsg");
 
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        errorMsg.innerText = "";
-        successMsg.innerText = "";
+    form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  errorMsg.innerText = "";
+  successMsg.innerText = "";
 
-        const orderId = document.getElementById("orderId").value.trim();
-        const reason = document.getElementById("reason").value.trim();
-        const contact = document.getElementById("contact").value.trim();
+  const orderId = document.getElementById("orderId").value.trim();
+  const reason = document.getElementById("reason").value.trim();
+  const contact = document.getElementById("contact").value.trim();
 
-        if (!orderId || !reason || !contact) {
-          errorMsg.innerText = "กรุณากรอกข้อมูลให้ครบทุกช่อง";
-          return;
-        }
+  if (!orderId || !reason || !contact) {
+    errorMsg.innerText = "กรุณากรอกข้อมูลให้ครบทุกช่อง";
+    return;
+  }
 
-        try {
-          const res = await fetch(`${apiBase}/api/claim`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId, orderId, reason, contact })
-          });
+  const data = { userId, orderId, reason, contact };
+  const encoded = encodeURIComponent(JSON.stringify(data));
+  window.location.href = `claim-confirm.html?data=${encoded}`;
+});
 
-          const result = await res.json();
-          if (res.ok) {
-            successMsg.innerText = result.message;
-            setTimeout(() => {
-              liff.closeWindow();
-            }, 2000);
-          } else {
-            errorMsg.innerText = result.message || "❌ ไม่สามารถส่งคำร้องได้";
-          }
-        } catch (err) {
-          errorMsg.innerText = "❌ ระบบมีปัญหา กรุณาลองใหม่ภายหลัง";
-        }
-      });
     });
   </script>
 </body>

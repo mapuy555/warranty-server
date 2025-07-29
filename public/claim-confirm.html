@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ตรวจสอบข้อมูลการเคลม</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Prompt', sans-serif;
+      max-width: 400px;
+      margin: 30px auto;
+      padding: 20px;
+      background-color: #f9f9f9;
+      border-radius: 12px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; }
+    .box { background: white; padding: 15px; border-radius: 10px; }
+    .box p { margin: 6px 0; }
+    button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #confirmBtn { background-color: #ff8800; color: white; }
+    #editBtn { background-color: #ccc; }
+    .error, .success { text-align: center; margin-top: 10px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h2>ตรวจสอบข้อมูลการเคลม</h2>
+  <div class="box">
+    <p><strong>เลขคำสั่งซื้อ:</strong> <span id="orderId"></span></p>
+    <p><strong>เหตุผล:</strong> <span id="reason"></span></p>
+    <p><strong>ช่องทางติดต่อ:</strong> <span id="contact"></span></p>
+    <hr />
+    <p><strong>สินค้า:</strong></p>
+    <ul id="productList" style="padding-left: 20px;"></ul>
+  </div>
+
+  <button id="confirmBtn">ยืนยันการเคลม</button>
+  <button id="editBtn">กลับไปแก้ไข</button>
+  <p class="error" id="errorMsg"></p>
+  <p class="success" id="successMsg"></p>
+
+  <script>
+    const apiBase = "https://warranty-api-umg2.onrender.com";
+    const params = new URLSearchParams(window.location.search);
+    const errorMsg = document.getElementById("errorMsg");
+    const successMsg = document.getElementById("successMsg");
+    let data = null;
+
+    try {
+      data = JSON.parse(decodeURIComponent(params.get("data")));
+    } catch {
+      errorMsg.textContent = "❌ ข้อมูลไม่ถูกต้อง กรุณากรอกใหม่";
+      document.getElementById("confirmBtn").disabled = true;
+    }
+
+    document.getElementById("orderId").textContent = data.orderId;
+    document.getElementById("reason").textContent = data.reason;
+    document.getElementById("contact").textContent = data.contact;
+
+    async function fetchItems(orderId) {
+      try {
+        const res = await fetch(`${apiBase}/api/registrations/${orderId}`);
+        if (!res.ok) throw new Error();
+        const reg = await res.json();
+
+        const productList = document.getElementById("productList");
+        productList.innerHTML = reg.items.map(item => `<li>• ${item.productName || item}</li>`).join("");
+      } catch {
+        document.getElementById("productList").innerHTML = "<li>❌ ไม่พบข้อมูลสินค้า</li>";
+      }
+    }
+
+    fetchItems(data.orderId);
+
+    document.getElementById("confirmBtn").addEventListener("click", async () => {
+      errorMsg.textContent = "";
+      successMsg.textContent = "";
+
+      try {
+        const res = await fetch(`${apiBase}/api/claim`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        const result = await res.json();
+        if (res.ok) {
+          successMsg.textContent = result.message || "📦 แจ้งเคลมสำเร็จ";
+          setTimeout(() => liff?.closeWindow(), 2000);
+        } else {
+          errorMsg.textContent = result.message || "❌ แจ้งเคลมไม่สำเร็จ";
+        }
+      } catch {
+        errorMsg.textContent = "❌ ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์";
+      }
+    });
+
+    document.getElementById("editBtn").addEventListener("click", () => {
+      history.back();
+    });
+  </script>
+</body>
+</html>

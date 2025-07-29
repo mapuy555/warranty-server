@@ -242,27 +242,25 @@ window.showDetail = (data) => {
   const modal = document.getElementById("detailModal");
   const content = document.getElementById("modalContent");
 
-  const reg = data.data || {};
+  const address = data.address && typeof data.address === "object"
+    ? [data.address.line, data.address.subDistrict, data.address.district, data.address.province, data.address.postcode].filter(v => !!v).join(", ")
+    : data.address || "-";
 
-  const address = reg.address && typeof reg.address === "object"
-    ? [reg.address.line, reg.address.subDistrict, reg.address.district, reg.address.province, reg.address.postcode].filter(v => !!v).join(", ")
-    : reg.address || "-";
-
-  const items = Array.isArray(reg.items)
-    ? `<ul class="list-disc ml-5">${reg.items.map(i => `<li>${i}</li>`).join("")}</ul>`
-    : typeof reg.items === "string"
-      ? reg.items
+  const items = Array.isArray(data.items)
+    ? `<ul class="list-disc ml-5">${data.items.map(i => `<li>${i.productName || i}</li>`).join("")}</ul>`
+    : typeof data.items === "string"
+      ? data.items
       : "-";
 
   content.innerHTML = `
     <div><strong>orderId</strong>: ${data.orderId}</div>
-    <div><strong>ชื่อ</strong>: ${reg.name || "-"}</div>
-    <div><strong>เบอร์</strong>: ${reg.phone || "-"}</div>
-    <div><strong>อีเมล</strong>: ${reg.email || "-"}</div>
+    <div><strong>ชื่อ</strong>: ${data.name || "-"}</div>
+    <div><strong>เบอร์</strong>: ${data.phone || "-"}</div>
+    <div><strong>อีเมล</strong>: ${data.email || "-"}</div>
     <div><strong>ที่อยู่</strong>: ${address}</div>
     <div><strong>สินค้า</strong>: ${items}</div>
-    <div><strong>ลงทะเบียนเมื่อ</strong>: ${formatDate(reg.registeredAt)}</div>
-    <div><strong>หมดประกัน</strong>: ${formatDate(reg.warrantyUntil)}</div>
+    <div><strong>ลงทะเบียนเมื่อ</strong>: ${formatDate(data.registeredAt)}</div>
+    <div><strong>หมดประกัน</strong>: ${formatDate(data.warrantyUntil)}</div>
     <div><strong>เหตุผล</strong>: ${data.reason || "-"}</div>
     <div><strong>สถานะ</strong>: ${data.status || "-"}</div>
     <div><strong>แจ้งเคลมเมื่อ</strong>: ${formatDate(data.claimedAt)}</div>
@@ -276,6 +274,7 @@ window.showDetail = (data) => {
 
 
 
+
   window.closeModal = () => {
     const modal = document.getElementById("detailModal");
     modal.classList.add("hidden");
@@ -284,27 +283,47 @@ window.showDetail = (data) => {
 
 // ✅ ฟังก์ชัน export
 window.exportToExcel = () => {
-  const rows = [['ประเภท', 'Order ID', 'ชื่อ', 'เบอร์', 'อีเมล', 'วันที่', 'หมดประกัน', 'สถานะ', 'เหตุผล']];
-  registrationData.forEach(r => rows.push([
-    'ลงทะเบียน',
-    r.orderId,
-    r.name,
-    r.phone,
-    r.email || '',
-    formatDate(r.registeredAt),
-    r.warrantyUntil || '',
-    '-',
-    '-'
-  ]));
- 
+  const rows = [[
+    'ประเภท', 'Order ID', 'ชื่อ', 'เบอร์', 'อีเมล', 
+    'ที่อยู่', 'สินค้า', 
+    'วันที่ลงทะเบียน', 'วันหมดประกัน',
+    'สถานะ', 'เหตุผล'
+  ]];
+
+  registrationData.forEach(r => {
+    // ✅ แปลงที่อยู่ให้อยู่ในรูปเดียว
+    const address = r.address && typeof r.address === "object"
+      ? [r.address.line, r.address.subDistrict, r.address.district, r.address.province, r.address.postcode].filter(Boolean).join(", ")
+      : r.address || "";
+
+    // ✅ แปลงสินค้าเป็นข้อความรวม
+    const items = Array.isArray(r.items)
+      ? r.items.map(i => (typeof i === "object" ? `${i.productName || i.name || ""} (${i.quantity || 1})` : i)).join(" | ")
+      : (typeof r.items === "string" ? r.items : "");
+
+    rows.push([
+      'ลงทะเบียน',
+      r.orderId,
+      r.name || '',
+      r.phone || '',
+      r.email || '',
+      address,
+      items,
+      formatDate(r.registeredAt),
+      formatDate(r.warrantyUntil),
+      '-', // ยังไม่มีสถานะใน registration
+      '-'  // ยังไม่มีเหตุผลใน registration
+    ]);
+  });
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "ข้อมูลรับประกัน");
 
-  const filename = `registration-only-${new Date().toISOString().split('T')[0]}.xlsx`;
+  const filename = `registration-data-${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, filename);
 };
+
 
 
 </script>
