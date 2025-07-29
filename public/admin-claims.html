@@ -36,12 +36,12 @@
 </nav>
 
  <!-- 🧾 Main -->
-  <main class="max-w-7xl mx-auto py-6 px-4">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <main class="min-h-[80vh] flex justify-center items-center px-4">
+  <div class="w-full max-w-5xl">
      
      
       <!-- 📝 Claim Table -->
-      <section class="bg-white p-5 rounded-xl shadow">
+      <section class="bg-white p-5 rounded-xl shadow mx-auto">
         <h2 class="text-lg font-semibold text-[var(--admin-green)] mb-3">รายการแจ้งเคลม</h2>
         <input type="text" id="searchClaim" placeholder="ค้นหา Order ID, เหตุผล..." class="mb-3 w-full border border-gray-300 px-3 py-2 rounded focus:ring focus:ring-blue-200">
         <div class="overflow-x-auto max-h-[420px] overflow-y-auto border border-gray-200 rounded-md">
@@ -132,26 +132,32 @@
   const data = await res.json();
   const claims = data.claims;
 
-  // 👇 ดึง registration ทั้งหมดมาไว้ใน Map โดยอ้างอิงจาก orderId
-  const regMap = new Map();
-  
+  const claimPromises = claims.map(async (c) => {
+    try {
+      const regRes = await fetch(`https://warranty-api-umg2.onrender.com/api/registrations/${c.orderId}`);
+      const regJson = await regRes.json();
+      const reg = regJson.registered ? regJson.data : {};
 
-  // 👇 ผสานข้อมูลจาก registrations เข้าแต่ละ claim
-  claimData = claims.map(c => {
-    const reg = regMap.get(c.orderId);
-    return {
-      ...c,
-      name: reg?.name || "-",
-      phone: reg?.phone || "-",
-      email: reg?.email || "-",
-      address: reg?.address || "-",
-      registeredAt: reg?.registeredAt || null,
-      warrantyUntil: reg?.warrantyUntil || "-"
-    };
+      return {
+        ...c,
+        name: reg?.name || "-",
+        phone: reg?.phone || "-",
+        email: reg?.email || "-",
+        address: reg?.address || "-",
+        userId: reg?.userId || "-",
+        registeredAt: reg?.registeredAt || null,
+        warrantyUntil: reg?.warrantyUntil || "-"
+      };
+    } catch {
+      return { ...c };
+    }
   });
 
+  claimData = await Promise.all(claimPromises);
   renderClaimTable();
 }
+
+
 
 
 function formatDate(ts) {
@@ -287,6 +293,7 @@ function renderSource(source) {
     <div><strong>เบอร์</strong>: ${data.phone || "-"}</div>
     <div><strong>อีเมล</strong>: ${data.email || "-"}</div>
     <div><strong>ที่อยู่</strong>: ${address}</div>
+    <div><strong>สินค้า</strong>: ${(data.items || []).join(", ") || "-"}</div>
     <div><strong>ลงทะเบียนเมื่อ</strong>: ${formatDate(data.registeredAt)}</div>
     <div><strong>หมดประกัน</strong>: ${data.warrantyUntil || "-"}</div>
     <div><strong>เหตุผล</strong>: ${data.reason || "-"}</div>
