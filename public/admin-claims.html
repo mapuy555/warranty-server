@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ลงทะเบียนสินค้า</title>
+  <title>รายการแจ้งเคลม</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
@@ -38,30 +38,30 @@
  <!-- 🧾 Main -->
   <main class="max-w-7xl mx-auto py-6 px-4">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- ✅ Registration Table -->
+     
+     
+      <!-- 📝 Claim Table -->
       <section class="bg-white p-5 rounded-xl shadow">
-        <h2 class="text-lg font-semibold text-[var(--admin-green)] mb-3">รายการลงทะเบียนสินค้า</h2>
-        <input type="text" id="searchRegistration" placeholder="ค้นหา Order ID, ชื่อ, เบอร์..." class="mb-3 w-full border border-gray-300 px-3 py-2 rounded focus:ring focus:ring-blue-200">
+        <h2 class="text-lg font-semibold text-[var(--admin-green)] mb-3">รายการแจ้งเคลม</h2>
+        <input type="text" id="searchClaim" placeholder="ค้นหา Order ID, เหตุผล..." class="mb-3 w-full border border-gray-300 px-3 py-2 rounded focus:ring focus:ring-blue-200">
         <div class="overflow-x-auto max-h-[420px] overflow-y-auto border border-gray-200 rounded-md">
-          <table class="w-full text-sm text-left min-w-[600px]">
+          <table class="w-full text-sm text-left min-w-[700px]">
             <thead class="bg-gray-100 sticky top-0 z-10">
               <tr>
                 <th class="border px-2 py-2">Order ID</th>
-                <th class="border px-2 py-2">ชื่อ</th>
-                <th class="border px-2 py-2">เบอร์</th>
+                <th class="border px-2 py-2">เหตุผล</th>
+                <th class="border px-2 py-2">สถานะ</th>
                 <th class="border px-2 py-2">วันที่</th>
-                <th class="border px-2 py-2">หมดประกัน</th>
+                <th class="border px-2 py-2">เปลี่ยนสถานะ</th>
                 <th class="border px-2 py-2">แหล่งที่มา</th>
                 <th class="border px-2 py-2 text-center">รายละเอียด</th>
                 <th class="border px-2 py-2 text-center">ลบ</th>
               </tr>
             </thead>
-            <tbody id="registrationTable"></tbody>
+            <tbody id="claimTable"></tbody>
           </table>
         </div>
       </section>
-     
-      
     </div>
     <p id="status" class="mt-4 text-center text-green-600 font-medium"></p>
   </main>
@@ -80,7 +80,7 @@
 
   <!-- 📤 Export Button -->
   <div class="fixed bottom-4 right-4">
-    <button onclick="exportToExcel()" class="bg-[var(--admin-red)] hover:bg-[var(--admin-green)] text-white px-5 py-2 rounded shadow transition">Export รายการลงทะเบียน</button>
+    <button onclick="exportToExcel()" class="bg-[var(--admin-red)] hover:bg-[var(--admin-green)] text-white px-5 py-2 rounded shadow transition">Export Excel</button>
   </div>
 
  
@@ -93,16 +93,11 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   
-  
+  const adminRes = await fetch("https://warranty-api-umg2.onrender.com/api/allowed-admins");
+  const { admins: allowedAdmins } = await adminRes.json();
 
-  let registrationData = [];
 
-let allowedAdmins = [];
-
-const adminRes = await fetch("https://warranty-api-umg2.onrender.com/api/allowed-admins");
-const adminJson = await adminRes.json();
-allowedAdmins = adminJson.admins || [];
-
+  let claimData = [];
 
   onAuthStateChanged(auth, (user) => {
     if (!user) {
@@ -122,27 +117,41 @@ allowedAdmins = adminJson.admins || [];
 
 
 
-      loadRegistrations();
-    
+      
+      loadClaims();
     }
   });
 
   window.logout = () => signOut(auth);
 
- async function loadRegistrations() {
-  const res = await fetch("https://warranty-api-umg2.onrender.com/api/registrations");
+
+
+
+  async function loadClaims() {
+  const res = await fetch("https://warranty-api-umg2.onrender.com/api/claims");
   const data = await res.json();
+  const claims = data.claims;
 
-  registrationData = data.registrations.map(r => ({
-    ...r,
-    registeredAtFormatted: formatDate(r.registeredAt)
-  }));
+  // 👇 ดึง registration ทั้งหมดมาไว้ใน Map โดยอ้างอิงจาก orderId
+  const regMap = new Map();
+  
 
-  renderRegistrationTable();
+  // 👇 ผสานข้อมูลจาก registrations เข้าแต่ละ claim
+  claimData = claims.map(c => {
+    const reg = regMap.get(c.orderId);
+    return {
+      ...c,
+      name: reg?.name || "-",
+      phone: reg?.phone || "-",
+      email: reg?.email || "-",
+      address: reg?.address || "-",
+      registeredAt: reg?.registeredAt || null,
+      warrantyUntil: reg?.warrantyUntil || "-"
+    };
+  });
+
+  renderClaimTable();
 }
-
-
-
 
 
 function formatDate(ts) {
@@ -187,57 +196,77 @@ function renderSource(source) {
 
 
 
-  function renderRegistrationTable() {
-    const keyword = document.getElementById("searchRegistration").value.toLowerCase();
-    const table = document.getElementById("registrationTable");
+ 
+
+  function renderClaimTable() {
+    const keyword = document.getElementById("searchClaim").value.toLowerCase();
+    const table = document.getElementById("claimTable");
     table.innerHTML = "";
-    registrationData.filter(r =>
-      r.orderId.toLowerCase().includes(keyword) ||
-      (r.name && r.name.toLowerCase().includes(keyword)) ||
-      (r.phone && r.phone.includes(keyword))
+    claimData.filter(c =>
+      c.orderId.toLowerCase().includes(keyword) ||
+      (c.reason && c.reason.toLowerCase().includes(keyword))
     ).forEach(item => {
       table.innerHTML += `
         <tr>
           <td class="border px-2 py-1">${item.orderId}</td>
-          <td class="border px-2 py-1">${item.name || "-"}</td>
-          <td class="border px-2 py-1">${item.phone || "-"}</td>
+          <td class="border px-2 py-1">${item.reason || "-"}</td>
+          <td class="border px-2 py-1">${item.status || "-"}</td>
           
-          <td class="border px-2 py-1">${item.registeredAtFormatted || "-"}</td>
-
-          <td class="border px-2 py-1">${item.warrantyUntil || "-"}</td>
+          <td class="border px-2 py-1">${item.claimedAtFormatted || "-"}</td>
+          
+          <td class="border px-2 py-1">
+            <select id="status-${item.id}" class="border rounded px-1 py-0.5 text-sm bg-gray-50">
+              <option${item.status === 'อยู่ระหว่างดำเนินการ' ? ' selected' : ''}>อยู่ระหว่างดำเนินการ</option>
+              <option${item.status === 'เคลมสำเร็จ' ? ' selected' : ''}>เคลมสำเร็จ</option>
+              <option${item.status === 'ไม่อนุมัติ' ? ' selected' : ''}>ไม่อนุมัติ</option>
+            </select>
+            <button onclick="updateStatus('${item.id}')" class="ml-1 bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded text-sm">
+  <i class="fas fa-check"></i>
+</button>
+          </td>
           <td class="border px-2 py-1">${renderSource(item.source)}</td>
-
           <td class="border px-2 py-1 text-center">
   <button onclick='showDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})' class="text-blue-600 hover:text-blue-800 text-lg">
     <i class="fas fa-eye"></i>
   </button>
 </td>
 <td class="border px-2 py-1 text-center">
-  <button onclick="deleteRegistration('${item.orderId}')" class="text-red-600 hover:text-red-800 text-lg">
-  <i class="fas fa-trash-alt"></i>
-</button>
-
+  <button onclick="deleteClaim('${item.id}')" class="text-red-600 hover:text-red-800 text-lg">
+    <i class="fas fa-trash-alt"></i>
+  </button>
 </td>
 
         </tr>`;
     });
   }
 
-
-
-  document.getElementById("searchRegistration").addEventListener("input", renderRegistrationTable);
   
+  document.getElementById("searchClaim").addEventListener("input", renderClaimTable);
 
- 
-
-  window.deleteRegistration = async (orderId) => {
-    if (confirm("⚠️ ลบข้อมูลนี้?")) {
-      await fetch(`https://warranty-api-umg2.onrender.com/api/registrations/${orderId}`, { method: "DELETE" });
-      loadRegistrations();
-    }
+  window.updateStatus = async (id) => {
+    const status = document.getElementById(`status-${id}`).value;
+    await fetch(`https://warranty-api-umg2.onrender.com/api/claims/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    });
+    await fetch("https://warranty-api-umg2.onrender.com/api/notify-status-change", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ claimId: id, status })
+    });
+    document.getElementById("status").innerText = "✅ อัปเดตสถานะเรียบร้อย";
+    loadClaims();
   };
 
- 
+  
+
+  window.deleteClaim = async (id) => {
+    if (confirm("⚠️ ลบข้อมูลนี้?")) {
+      await fetch(`https://warranty-api-umg2.onrender.com/api/claims/${id}`, { method: "DELETE" });
+      loadClaims();
+    }
+  };
 
   window.showDetail = (data) => {
   const modal = document.getElementById("detailModal");
@@ -249,6 +278,23 @@ function renderSource(source) {
 
   const userId = data.userId && data.userId.length > 20 ? `${data.userId.slice(0, 10)}...` : data.userId || "-";
 
+  const isClaim = !!data.claimedAt; // ✅ ถ้ามี claimedAt ถือว่าเป็นฝั่งเคลม
+
+  if (isClaim) {
+  content.innerHTML = `
+    <div><strong>orderId</strong>: ${data.orderId}</div>
+    <div><strong>ชื่อ</strong>: ${data.name || "-"}</div>
+    <div><strong>เบอร์</strong>: ${data.phone || "-"}</div>
+    <div><strong>อีเมล</strong>: ${data.email || "-"}</div>
+    <div><strong>ที่อยู่</strong>: ${address}</div>
+    <div><strong>ลงทะเบียนเมื่อ</strong>: ${formatDate(data.registeredAt)}</div>
+    <div><strong>หมดประกัน</strong>: ${data.warrantyUntil || "-"}</div>
+    <div><strong>เหตุผล</strong>: ${data.reason || "-"}</div>
+    <div><strong>สถานะ</strong>: ${data.status || "-"}</div>
+    <div><strong>แจ้งเคลมเมื่อ</strong>: ${formatDate(data.claimedAt)}</div>
+  `;
+}
+else {
     // 👉 ลงทะเบียนสินค้า
     content.innerHTML = `
       <div><strong>orderId</strong>: ${data.orderId}</div>
@@ -260,11 +306,12 @@ function renderSource(source) {
       <div><strong>registeredAt</strong>: ${formatDate(data.registeredAt)}</div>
       <div><strong>warrantyUntil</strong>: ${data.warrantyUntil || "-"}</div>
     `;
+  }
 
   modal.classList.remove("hidden");
   modal.classList.add("flex");
+};
 
-  };
 
 
   window.closeModal = () => {
@@ -275,27 +322,22 @@ function renderSource(source) {
 
 // ✅ ฟังก์ชัน export
 window.exportToExcel = () => {
-  const rows = [['ประเภท', 'Order ID', 'ชื่อ', 'เบอร์', 'อีเมล', 'วันที่', 'หมดประกัน', 'สถานะ', 'เหตุผล']];
-  registrationData.forEach(r => rows.push([
-    'ลงทะเบียน',
-    r.orderId,
-    r.name,
-    r.phone,
-    r.email || '',
-    formatDate(r.registeredAt),
-    r.warrantyUntil || '',
-    '-',
-    '-'
+  const rows = [['Order ID', 'เหตุผล', 'สถานะ', 'วันที่แจ้งเคลม']];
+  claimData.forEach(c => rows.push([
+    c.orderId,
+    c.reason || '-',
+    c.status || '-',
+    formatDate(c.claimedAt)
   ]));
- 
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "ข้อมูลรับประกัน");
+  XLSX.utils.book_append_sheet(wb, ws, "เคลมสินค้า");
 
-  const filename = `registration-only-${new Date().toISOString().split('T')[0]}.xlsx`;
+  const filename = `claims-${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, filename);
 };
+
 
 
 </script>
