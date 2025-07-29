@@ -637,15 +637,17 @@ app.get("/api/registrations/:orderId", async (req, res) => {
   const { orderId } = req.params;
   try {
     const doc = await db.collection("registrations").doc(orderId).get();
-    if (doc.exists) {
-      res.json({ registered: true, data: doc.data() });
-    } else {
-      res.json({ registered: false });
+    if (!doc.exists) {
+      return res.status(404).json({ message: "❌ ไม่พบข้อมูลการลงทะเบียน" });
     }
+
+    const data = doc.data();
+    return res.json(data); // ✅ ส่งข้อมูลตรง ๆ เช่น { orderId: "...", items: [...] }
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // ✅ สำหรับหน้า register
 app.get("/api/liff-id-register", (req, res) => {
