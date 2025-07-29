@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ลงทะเบียนสินค้า</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --admin-red: #e11d48;
+      --admin-black: #1f2937;
+      --admin-green: #2563eb;
+      --admin-light: #f3f4f6;   
+    }
+    body {
+         font-family: 'Prompt', sans-serif;
+         background-color: #f9fafb;
+      }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-[var(--admin-light)] text-gray-800">
+  <!-- 🔝 Navbar -->
+  <nav class="bg-[var(--admin-green)] text-white px-6 py-3 w-full flex flex-wrap justify-between items-center gap-2 shadow-md">
+  <div class="text-lg font-semibold mb-2 md:mb-0">ระบบจัดการรับประกัน</div>
+  <div class="flex flex-wrap items-center gap-3 text-sm">
+    <a href="admin-dashboard.html" class="bg-white text-[var(--admin-green)] font-medium px-3 py-1 rounded-md shadow hover:bg-[var(--admin-light)] transition">Dashboard</a>
+    <a href="admin-claims.html" class="hover:text-[var(--admin-black)]">เคลมสินค้า</a>
+    <a href="admin-registrations.html" class="hover:text-[var(--admin-black)]">ลงทะเบียน</a>
+    <a href="admin-upload.html" class="bg-white text-[#ee4d2d] border border-[#ee4d2d] hover:bg-[#ee4d2d] hover:text-white px-3 py-1 rounded-md shadow transition">Shopee</a>
+    <a href="admin-upload-tiktok.html" class="bg-white text-black border border-gray-400 hover:bg-[#121212] hover:text-white px-3 py-1 rounded-md shadow transition">TikTok</a>
+    <div id="admin-info" class="ml-3"></div>
+  </div>
+</nav>
+
+ <!-- 🧾 Main -->
+  <main class="max-w-7xl mx-auto py-6 px-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- ✅ Registration Table -->
+      <section class="bg-white p-5 rounded-xl shadow">
+        <h2 class="text-lg font-semibold text-[var(--admin-green)] mb-3">รายการลงทะเบียนสินค้า</h2>
+        <input type="text" id="searchRegistration" placeholder="ค้นหา Order ID, ชื่อ, เบอร์..." class="mb-3 w-full border border-gray-300 px-3 py-2 rounded focus:ring focus:ring-blue-200">
+        <div class="overflow-x-auto max-h-[420px] overflow-y-auto border border-gray-200 rounded-md">
+          <table class="w-full text-sm text-left min-w-[600px]">
+            <thead class="bg-gray-100 sticky top-0 z-10">
+              <tr>
+                <th class="border px-2 py-2">Order ID</th>
+                <th class="border px-2 py-2">ชื่อ</th>
+                <th class="border px-2 py-2">เบอร์</th>
+                <th class="border px-2 py-2">วันที่</th>
+                <th class="border px-2 py-2">หมดประกัน</th>
+                <th class="border px-2 py-2">แหล่งที่มา</th>
+                <th class="border px-2 py-2 text-center">รายละเอียด</th>
+                <th class="border px-2 py-2 text-center">ลบ</th>
+              </tr>
+            </thead>
+            <tbody id="registrationTable"></tbody>
+          </table>
+        </div>
+      </section>
+     
+      
+    </div>
+    <p id="status" class="mt-4 text-center text-green-600 font-medium"></p>
+  </main>
+    <p id="status" class="mt-4 text-center text-blue-600"></p>
+  </div>
+  <!-- 🔍 Modal ดูรายละเอียด -->
+  <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-50">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-lg relative">
+<button onclick="closeModal()" class="absolute top-2 right-3 text-gray-500 hover:text-red-500 text-xl">
+  <i class="fas fa-times"></i>
+</button>
+      <h3 class="text-lg font-semibold mb-4 text-[var(--admin-green)]">รายละเอียด</h3>
+      <div id="modalContent" class="text-sm space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- 📤 Export Button -->
+  <div class="fixed bottom-4 right-4">
+    <button onclick="exportToExcel()" class="bg-[var(--admin-red)] hover:bg-[var(--admin-green)] text-white px-5 py-2 rounded shadow transition">Export รายการลงทะเบียน</button>
+  </div>
+
+ 
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+
+  const firebaseRes = await fetch("https://warranty-api-umg2.onrender.com/api/firebase-config");
+  const firebaseConfig = await firebaseRes.json();
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const allowedAdmins = ["suphatraprayurkha@gmail.com"];
+
+  let registrationData = [];
+
+  onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      window.location.href = "admin-login.html";
+    } else if (!allowedAdmins.includes(user.email)) {
+      alert("⛔ คุณไม่มีสิทธิ์ใช้งานหน้านี้");
+      signOut(auth);
+    } else {
+     document.getElementById("admin-info").innerHTML = `
+  <div class="flex items-center gap-2 bg-white text-gray-800 px-3 py-1 rounded-md shadow text-xs">
+    <i class="fas fa-user-circle text-lg text-gray-600"></i>
+    <span class="hidden sm:inline">${user.email}</span>
+    <button onclick="logout()" class="text-red-600 hover:text-white hover:bg-red-600 transition px-2 py-0.5 rounded">ออก</button>
+  </div>
+`;
+
+
+
+
+      loadRegistrations();
+    
+    }
+  });
+
+  window.logout = () => signOut(auth);
+
+ async function loadRegistrations() {
+  const res = await fetch("https://warranty-api-umg2.onrender.com/api/registrations");
+  const data = await res.json();
+
+  registrationData = data.registrations.map(r => ({
+    ...r,
+    registeredAtFormatted: formatDate(r.registeredAt)
+  }));
+
+  renderRegistrationTable();
+}
+
+
+
+
+
+function formatDate(ts) {
+  try {
+    if (!ts) return "-";
+
+    if (typeof ts === "string") {
+      const date = new Date(ts);
+      return isNaN(date.getTime()) ? "-" : date.toISOString().split("T")[0];
+    }
+
+    if (typeof ts === "object") {
+      // ✅ รองรับ Firestore Timestamp ที่ใช้ seconds/nanoseconds
+      if ("_seconds" in ts || "seconds" in ts) {
+        const seconds = ts.seconds || ts._seconds;
+        return new Date(seconds * 1000).toISOString().split("T")[0];
+      }
+
+      if (typeof ts.toDate === "function") {
+        return ts.toDate().toISOString().split("T")[0];
+      }
+    }
+
+    return "-";
+  } catch {
+    return "-";
+  }
+}
+
+
+function renderSource(source) {
+  if (source === "tiktok") {
+    return `<span class="bg-black text-white text-xs px-2 py-0.5 rounded">TikTok</span>`;
+  } else if (source === "shopee") {
+    return `<span class="bg-orange-500 text-white text-xs px-2 py-0.5 rounded">Shopee</span>`;
+  } else {
+    return `<span class="bg-gray-300 text-gray-700 text-xs px-2 py-0.5 rounded">ไม่ระบุ</span>`;
+  }
+}
+
+
+
+
+
+  function renderRegistrationTable() {
+    const keyword = document.getElementById("searchRegistration").value.toLowerCase();
+    const table = document.getElementById("registrationTable");
+    table.innerHTML = "";
+    registrationData.filter(r =>
+      r.orderId.toLowerCase().includes(keyword) ||
+      (r.name && r.name.toLowerCase().includes(keyword)) ||
+      (r.phone && r.phone.includes(keyword))
+    ).forEach(item => {
+      table.innerHTML += `
+        <tr>
+          <td class="border px-2 py-1">${item.orderId}</td>
+          <td class="border px-2 py-1">${item.name || "-"}</td>
+          <td class="border px-2 py-1">${item.phone || "-"}</td>
+          
+          <td class="border px-2 py-1">${item.registeredAtFormatted || "-"}</td>
+
+          <td class="border px-2 py-1">${item.warrantyUntil || "-"}</td>
+          <td class="border px-2 py-1">${renderSource(item.source)}</td>
+
+          <td class="border px-2 py-1 text-center">
+  <button onclick='showDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})' class="text-blue-600 hover:text-blue-800 text-lg">
+    <i class="fas fa-eye"></i>
+  </button>
+</td>
+<td class="border px-2 py-1 text-center">
+  <button onclick="deleteRegistration('${item.orderId}')" class="text-red-600 hover:text-red-800 text-lg">
+  <i class="fas fa-trash-alt"></i>
+</button>
+
+</td>
+
+        </tr>`;
+    });
+  }
+
+
+
+  document.getElementById("searchRegistration").addEventListener("input", renderRegistrationTable);
+  
+
+ 
+
+  window.deleteRegistration = async (orderId) => {
+    if (confirm("⚠️ ลบข้อมูลนี้?")) {
+      await fetch(`https://warranty-api-umg2.onrender.com/api/registrations/${orderId}`, { method: "DELETE" });
+      loadRegistrations();
+    }
+  };
+
+ 
+
+  window.showDetail = (data) => {
+  const modal = document.getElementById("detailModal");
+  const content = document.getElementById("modalContent");
+
+  const address = data.address && typeof data.address === "object"
+    ? [data.address.line, data.address.subDistrict, data.address.district, data.address.province, data.address.postcode].filter(v => !!v).join(", ")
+    : data.address || "-";
+
+  const userId = data.userId && data.userId.length > 20 ? `${data.userId.slice(0, 10)}...` : data.userId || "-";
+
+ 
+
+ 
+
+    // 👉 ลงทะเบียนสินค้า
+    content.innerHTML = `
+      <div><strong>orderId</strong>: ${data.orderId}</div>
+      <div><strong>name</strong>: ${data.name || "-"}</div>
+      <div><strong>phone</strong>: ${data.phone || "-"}</div>
+      <div><strong>email</strong>: ${data.email || "-"}</div>
+      <div><strong>userId</strong>: ${userId}</div>
+      <div><strong>address</strong>: ${address}</div>
+      <div><strong>registeredAt</strong>: ${formatDate(data.registeredAt)}</div>
+      <div><strong>warrantyUntil</strong>: ${data.warrantyUntil || "-"}</div>
+    `;
+
+
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+
+
+
+
+  window.closeModal = () => {
+    const modal = document.getElementById("detailModal");
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  };
+
+// ✅ ฟังก์ชัน export
+window.exportToExcel = () => {
+  const rows = [['ประเภท', 'Order ID', 'ชื่อ', 'เบอร์', 'อีเมล', 'วันที่', 'หมดประกัน', 'สถานะ', 'เหตุผล']];
+  registrationData.forEach(r => rows.push([
+    'ลงทะเบียน',
+    r.orderId,
+    r.name,
+    r.phone,
+    r.email || '',
+    formatDate(r.registeredAt),
+    r.warrantyUntil || '',
+    '-',
+    '-'
+  ]));
+ 
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "ข้อมูลรับประกัน");
+
+  const filename = `registration-${new Date().toISOString().split('T')[0]}.xlsx`;
+  XLSX.writeFile(wb, filename);
+};
+
+
+</script>
+
+</body>
+</html>
