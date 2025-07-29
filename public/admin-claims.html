@@ -146,8 +146,10 @@
         address: reg?.address || "-",
         userId: reg?.userId || "-",
         registeredAt: reg?.registeredAt || null,
-        warrantyUntil: reg?.warrantyUntil || "-"
-      };
+        warrantyUntil: reg?.warrantyUntil || "-",
+        items: Array.isArray(reg?.items) ? reg.items : []
+
+    };
     } catch {
       return { ...c };
     }
@@ -293,9 +295,9 @@ function renderSource(source) {
     <div><strong>เบอร์</strong>: ${data.phone || "-"}</div>
     <div><strong>อีเมล</strong>: ${data.email || "-"}</div>
     <div><strong>ที่อยู่</strong>: ${address}</div>
-    <div><strong>สินค้า</strong>: ${(data.items || []).join(", ") || "-"}</div>
+<div><strong>สินค้า</strong>: ${(Array.isArray(data.items) && data.items.length > 0) ? data.items.join(", ") : "-"}</div>
     <div><strong>ลงทะเบียนเมื่อ</strong>: ${formatDate(data.registeredAt)}</div>
-    <div><strong>หมดประกัน</strong>: ${data.warrantyUntil || "-"}</div>
+    <div><strong>หมดประกัน</strong>: ${formatDate(data.warrantyUntil)}</div>
     <div><strong>เหตุผล</strong>: ${data.reason || "-"}</div>
     <div><strong>สถานะ</strong>: ${data.status || "-"}</div>
     <div><strong>แจ้งเคลมเมื่อ</strong>: ${formatDate(data.claimedAt)}</div>

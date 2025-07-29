@@ -238,33 +238,42 @@ function renderSource(source) {
   };
 
  
-
-  window.showDetail = (data) => {
+window.showDetail = (data) => {
   const modal = document.getElementById("detailModal");
   const content = document.getElementById("modalContent");
 
-  const address = data.address && typeof data.address === "object"
-    ? [data.address.line, data.address.subDistrict, data.address.district, data.address.province, data.address.postcode].filter(v => !!v).join(", ")
-    : data.address || "-";
+  const reg = data.data || {};
 
-  const userId = data.userId && data.userId.length > 20 ? `${data.userId.slice(0, 10)}...` : data.userId || "-";
+  const address = reg.address && typeof reg.address === "object"
+    ? [reg.address.line, reg.address.subDistrict, reg.address.district, reg.address.province, reg.address.postcode].filter(v => !!v).join(", ")
+    : reg.address || "-";
 
-    // 👉 ลงทะเบียนสินค้า
-    content.innerHTML = `
-      <div><strong>orderId</strong>: ${data.orderId}</div>
-      <div><strong>name</strong>: ${data.name || "-"}</div>
-      <div><strong>phone</strong>: ${data.phone || "-"}</div>
-      <div><strong>email</strong>: ${data.email || "-"}</div>
-      <div><strong>userId</strong>: ${userId}</div>
-      <div><strong>address</strong>: ${address}</div>
-      <div><strong>registeredAt</strong>: ${formatDate(data.registeredAt)}</div>
-      <div><strong>warrantyUntil</strong>: ${data.warrantyUntil || "-"}</div>
-    `;
+  const items = Array.isArray(reg.items)
+    ? `<ul class="list-disc ml-5">${reg.items.map(i => `<li>${i}</li>`).join("")}</ul>`
+    : typeof reg.items === "string"
+      ? reg.items
+      : "-";
+
+  content.innerHTML = `
+    <div><strong>orderId</strong>: ${data.orderId}</div>
+    <div><strong>ชื่อ</strong>: ${reg.name || "-"}</div>
+    <div><strong>เบอร์</strong>: ${reg.phone || "-"}</div>
+    <div><strong>อีเมล</strong>: ${reg.email || "-"}</div>
+    <div><strong>ที่อยู่</strong>: ${address}</div>
+    <div><strong>สินค้า</strong>: ${items}</div>
+    <div><strong>ลงทะเบียนเมื่อ</strong>: ${formatDate(reg.registeredAt)}</div>
+    <div><strong>หมดประกัน</strong>: ${formatDate(reg.warrantyUntil)}</div>
+    <div><strong>เหตุผล</strong>: ${data.reason || "-"}</div>
+    <div><strong>สถานะ</strong>: ${data.status || "-"}</div>
+    <div><strong>แจ้งเคลมเมื่อ</strong>: ${formatDate(data.claimedAt)}</div>
+  `;
 
   modal.classList.remove("hidden");
   modal.classList.add("flex");
+};
 
-  };
+
+
 
 
   window.closeModal = () => {

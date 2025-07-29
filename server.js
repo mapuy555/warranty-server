@@ -175,7 +175,7 @@ app.get("/api/order/:orderId", async (req, res) => {
 // ✅ ลงทะเบียนสินค้า
 app.post("/api/register", async (req, res) => {
   try {
-    const { userId, name, phone, email, orderId, address } = req.body;
+    const { userId, name, phone, email, orderId, address, items } = req.body;
     const existing = await db.collection("registrations").doc(orderId).get();
     if (existing.exists) {
       return res.status(400).json({ message: "🔁 คำสั่งซื้อนี้ลงทะเบียนแล้ว" });
@@ -204,6 +204,7 @@ app.post("/api/register", async (req, res) => {
       email,
       orderId,
       address,
+       items: items || [], // ✅ เก็บลง Firestore
       registeredAt: admin.firestore.Timestamp.fromDate(registeredAt),
       warrantyUntil,
       source: orderData.source || "unknown"
@@ -216,6 +217,7 @@ app.post("/api/register", async (req, res) => {
       email,
       orderId,
       address,
+      items, // ✅ ส่ง items ไปแสดงใน Flex Message ด้วย
       registeredAt: registeredAt.toISOString().split("T")[0],
       warrantyUntil,
     }, orderData);

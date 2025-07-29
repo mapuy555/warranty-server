@@ -85,7 +85,7 @@
     document.getElementById("address").innerText = `${data.address.line}, ${data.address.subDistrict}, ${data.address.district}, ${data.address.province} ${data.address.postcode}`;
 
     // ดึงรายละเอียดคำสั่งซื้อ
- async function fetchOrderDetails(orderId) {
+async function fetchOrderDetails(orderId) {
   try {
     const res = await fetch(`${apiBase}/api/order/${orderId}`);
     if (!res.ok) throw new Error("ไม่พบคำสั่งซื้อ กรุณาตรวจสอบเลขคำสั่งซื้ออีกครั้ง");
@@ -100,21 +100,23 @@
         productEl.innerHTML += `<li>${item.productName} (${item.quantity || 1} ชิ้น)</li>`;
       });
       productEl.innerHTML += "</ul>";
+
+      // ✅ เก็บไว้ใน data เพื่อส่งไปลงทะเบียน
+      data.items = order.items;
     } else {
       productEl.innerText = "-";
     }
 
     // ✅ แสดงวันที่
-    // ✅ แสดงวันที่แบบรองรับทั้ง string และ Timestamp
-let displayDate = "-";
-if (order.purchaseDate) {
-  if (typeof order.purchaseDate === "string") {
-    displayDate = new Date(order.purchaseDate).toLocaleDateString("th-TH");
-  } else if (order.purchaseDate._seconds) {
-    displayDate = new Date(order.purchaseDate._seconds * 1000).toLocaleDateString("th-TH");
-  }
-}
-document.getElementById("purchaseDate").innerText = displayDate;
+    let displayDate = "-";
+    if (order.purchaseDate) {
+      if (typeof order.purchaseDate === "string") {
+        displayDate = new Date(order.purchaseDate).toLocaleDateString("th-TH");
+      } else if (order.purchaseDate._seconds) {
+        displayDate = new Date(order.purchaseDate._seconds * 1000).toLocaleDateString("th-TH");
+      }
+    }
+    document.getElementById("purchaseDate").innerText = displayDate;
 
   } catch (err) {
     errorMsg.innerText = err.message || "⚠️ เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า";
@@ -122,6 +124,7 @@ document.getElementById("purchaseDate").innerText = displayDate;
     document.getElementById("purchaseDate").innerText = "-";
   }
 }
+
 
 checkIfAlreadyRegistered(data.orderId);
 

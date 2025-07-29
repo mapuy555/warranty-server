@@ -160,6 +160,18 @@
           return;
         }
 
+        // ✅ ดึงรายการสินค้า
+  let items = [];
+  try {
+    const res = await fetch(`${apiBase}/api/order/${orderId}`);
+    if (!res.ok) throw new Error("ไม่พบคำสั่งซื้อ");
+    const result = await res.json();
+    items = result.items || [];
+  } catch (err) {
+    errorMsg.innerText = `❌ ไม่พบคำสั่งซื้อหรือเกิดข้อผิดพลาด`;
+    return;
+  }
+
         // ✅ ส่งข้อมูลทั้งหมดเป็น JSON ไปยัง liff-confirm.html ผ่าน query string
         const data = {
           userId,
@@ -167,7 +179,8 @@
           phone,
           email,
           orderId,
-          address
+          address,
+          items
         };
 
         window.location.href = `liff-confirm.html?data=${encodeURIComponent(JSON.stringify(data))}`;
