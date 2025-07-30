@@ -194,6 +194,21 @@ app.post("/api/register", async (req, res) => {
     }
 
     const orderData = orderDoc.data();
+
+    if (orderData.purchaseDate) {
+  const purchaseDate = new Date(orderData.purchaseDate.toDate?.() || orderData.purchaseDate);
+  const today = new Date();
+
+  const diffDays = Math.floor((today - purchaseDate) / (1000 * 60 * 60 * 24));
+
+  if (diffDays > 20) {
+    return res.status(400).json({
+      message: `⛔ หมดระยะเวลาลงทะเบียน (เกิน ${diffDays} วันจากวันที่สั่งซื้อ)`
+    });
+  }
+}
+
+
     const registeredAt = new Date();
     
    
