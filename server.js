@@ -638,15 +638,16 @@ app.get("/api/registrations/:orderId", async (req, res) => {
   try {
     const doc = await db.collection("registrations").doc(orderId).get();
     if (!doc.exists) {
-      return res.status(404).json({ message: "❌ ไม่พบข้อมูลการลงทะเบียน" });
+      return res.json({ registered: false });
     }
 
     const data = doc.data();
-    return res.json(data); // ✅ ส่งข้อมูลตรง ๆ เช่น { orderId: "...", items: [...] }
+    return res.json({ registered: true, data });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 
 // ✅ สำหรับหน้า register
