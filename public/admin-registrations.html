@@ -261,9 +261,6 @@ window.showDetail = (data) => {
     <div><strong>สินค้า</strong>: ${items}</div>
     <div><strong>ลงทะเบียนเมื่อ</strong>: ${formatDate(data.registeredAt)}</div>
     <div><strong>หมดประกัน</strong>: ${formatDate(data.warrantyUntil)}</div>
-    <div><strong>เหตุผล</strong>: ${data.reason || "-"}</div>
-    <div><strong>สถานะ</strong>: ${data.status || "-"}</div>
-    <div><strong>แจ้งเคลมเมื่อ</strong>: ${formatDate(data.claimedAt)}</div>
   `;
 
   modal.classList.remove("hidden");

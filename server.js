@@ -195,7 +195,19 @@ app.post("/api/register", async (req, res) => {
 
     const orderData = orderDoc.data();
     const registeredAt = new Date();
-    const warrantyUntil = calculateWarrantyUntil(7);
+    
+   
+let warrantyUntil = null;
+
+if (orderData.purchaseDate) {
+  const purchaseDate = new Date(orderData.purchaseDate.toDate?.() || orderData.purchaseDate); // รองรับ Firestore Timestamp หรือ Date
+  const warrantyDate = new Date(purchaseDate);
+  warrantyDate.setDate(warrantyDate.getDate() + 20); // เพิ่ม 20 วัน
+  warrantyUntil = warrantyDate.toISOString().split("T")[0];
+} else {
+  warrantyUntil = calculateWarrantyUntil(20); // fallback ถ้าไม่มี purchaseDate
+}
+
 
     await db.collection("registrations").doc(orderId).set({
       userId,

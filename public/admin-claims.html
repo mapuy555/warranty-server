@@ -295,7 +295,16 @@ function renderSource(source) {
     <div><strong>เบอร์</strong>: ${data.phone || "-"}</div>
     <div><strong>อีเมล</strong>: ${data.email || "-"}</div>
     <div><strong>ที่อยู่</strong>: ${address}</div>
-<div><strong>สินค้า</strong>: ${(Array.isArray(data.items) && data.items.length > 0) ? data.items.join(", ") : "-"}</div>
+<div><strong>สินค้า</strong>: ${
+  Array.isArray(data.items) && data.items.length > 0
+    ? data.items.map(item =>
+        typeof item === "string"
+          ? `• ${item}`
+          : `• ${item.productName || "-"} (${item.quantity || 1} ชิ้น)`
+      ).join("<br>")
+    : "-"
+}</div>
+
     <div><strong>ลงทะเบียนเมื่อ</strong>: ${formatDate(data.registeredAt)}</div>
     <div><strong>หมดประกัน</strong>: ${formatDate(data.warrantyUntil)}</div>
     <div><strong>เหตุผล</strong>: ${data.reason || "-"}</div>
