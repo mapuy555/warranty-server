@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>เพิ่มแอดมิน</title>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+ <style>
+    :root {
+      --admin-red: #e11d48;
+      --admin-black: #1f2937;
+      --admin-green: #2563eb;
+      --admin-light: #f3f4f6;   
+    }
+    body {
+         font-family: 'Prompt', sans-serif;
+         background-color: #f9fafb;
+      }
+  </style>
+</head>
+<body class="bg-[var(--admin-light)] text-gray-800">
+   <!-- 🔝 Navbar -->
+  <nav class="bg-[var(--admin-green)] text-white px-6 py-3 w-full flex flex-wrap justify-between items-center gap-2 shadow-md">
+  <div class="text-lg font-semibold mb-2 md:mb-0">ระบบจัดการรับประกัน</div>
+  <div class="flex flex-wrap items-center gap-3 text-sm">
+    <a href="admin-add-admin.html" class="bg-white text-[var(--admin-green)] font-medium px-3 py-1 rounded-md shadow hover:bg-[var(--admin-light)] transition">Add addmin</a>
+    <a href="admin-claims.html" class="hover:text-[var(--admin-black)]">เคลมสินค้า</a>
+    <a href="admin-registrations.html" class="hover:text-[var(--admin-black)]">ลงทะเบียน</a>
+    <a href="admin-upload.html" class="bg-white text-[#ee4d2d] border border-[#ee4d2d] hover:bg-[#ee4d2d] hover:text-white px-3 py-1 rounded-md shadow transition">Shopee</a>
+    <a href="admin-upload-tiktok.html" class="bg-white text-black border border-gray-400 hover:bg-[#121212] hover:text-white px-3 py-1 rounded-md shadow transition">TikTok</a>
+    <div id="admin-info" class="ml-3"></div>
+  </div>
+</nav>
+  <div class="max-w-md mx-auto mt-20 bg-white p-8 rounded-xl shadow">
+    <h1 class="text-2xl font-bold mb-6 text-center">เพิ่มสิทธิ์แอดมิน</h1>
+
+    <input type="email" id="adminEmail" placeholder="อีเมลแอดมินใหม่"
+      class="w-full px-4 py-2 border border-gray-300 rounded mb-4" />
+
+    <button onclick="addAdmin()"
+      class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+      เพิ่มสิทธิ์แอดมิน
+    </button>
+
+    <div id="result" class="mt-4 text-center text-sm text-green-600"></div>
+    <div id="error" class="mt-2 text-center text-sm text-red-600"></div>
+  </div>
+
+  <script>
+    let firebaseConfig = null;
+    let allowedEmails = [];
+    let currentUserEmail = null;
+
+    async function init() {
+      try {
+        // 📥 โหลด Firebase Config จาก backend
+        const configRes = await fetch("https://warranty-api-umg2.onrender.com/api/firebase-config");
+
+        firebaseConfig = await configRes.json();
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // 📥 โหลดอีเมลที่ได้รับอนุญาต
+        const adminRes = await fetch("https://warranty-api-umg2.onrender.com/api/allowed-admins");
+        const data = await adminRes.json();
+        allowedEmails = data.admins.map(e => e.toLowerCase());
+
+        // 👤 ตรวจสอบผู้ login
+        auth.onAuthStateChanged(user => {
+          if (!user) {
+            alert("กรุณาเข้าสู่ระบบก่อนใช้งาน");
+            window.location.href = "/admin-login.html";
+          } else {
+            currentUserEmail = user.email.toLowerCase();
+          }
+
+          // กำหนดฟังก์ชัน global
+          window.addAdmin = async function () {
+            const email = document.getElementById("adminEmail").value.trim().toLowerCase();
+            const resultEl = document.getElementById("result");
+            const errorEl = document.getElementById("error");
+            resultEl.innerText = "";
+            errorEl.innerText = "";
+
+            if (!email) return errorEl.innerText = "⚠️ กรุณากรอกอีเมล";
+
+            if (!allowedEmails.includes(currentUserEmail)) {
+              return errorEl.innerText = "❌ คุณไม่มีสิทธิ์เพิ่มแอดมิน";
+            }
+
+            try {
+              await db.collection("adminUsers").doc(email).set({
+                role: "admin",
+                createdAt: new Date()
+              });
+              resultEl.innerText = `✅ เพิ่ม ${email} เป็นแอดมินแล้ว`;
+              document.getElementById("adminEmail").value = "";
+            } catch (error) {
+              console.error("เพิ่มแอดมินล้มเหลว:", error);
+              errorEl.innerText = "เกิดข้อผิดพลาดในการเพิ่มแอดมิน";
+            }
+          };
+        });
+
+      } catch (err) {
+        console.error("เกิดข้อผิดพลาดในการโหลด config หรือ email:", err);
+        document.getElementById("error").innerText = "เกิดข้อผิดพลาดในการโหลดข้อมูลระบบ";
+      }
+    }
+
+    // 🔃 เริ่มต้นระบบ
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>

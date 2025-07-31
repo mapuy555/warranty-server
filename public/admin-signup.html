@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>สมัครบัญชีแอดมิน</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-100 font-sans text-gray-900">
+  <div class="max-w-md mx-auto mt-20 bg-white p-8 rounded-xl shadow">
+    <h1 class="text-2xl font-bold mb-6 text-center">สมัครบัญชีแอดมิน</h1>
+
+    <input type="email" id="email" placeholder="อีเมล"
+      class="w-full px-4 py-2 border border-gray-300 rounded mb-4" />
+    <input type="password" id="password" placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)"
+      class="w-full px-4 py-2 border border-gray-300 rounded mb-4" />
+
+    <button onclick="signup()"
+      class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">
+      สมัครบัญชี
+    </button>
+
+    <div id="result" class="mt-4 text-center text-sm text-green-600"></div>
+    <div id="error" class="mt-2 text-center text-sm text-red-600"></div>
+  </div>
+
+  <script>
+    let auth, db;
+
+    async function init() {
+      try {
+        const res = await fetch("https://warranty-api-umg2.onrender.com/api/firebase-config");
+        const firebaseConfig = await res.json();
+
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.firestore();
+      } catch (err) {
+        console.error("โหลด config ล้มเหลว:", err);
+        document.getElementById("error").innerText = "❌ โหลด config ไม่สำเร็จ";
+      }
+    }
+
+    // ✅ สมัครผู้ใช้ใหม่
+    async function signup() {
+      const email = document.getElementById("email").value.trim().toLowerCase();
+      const password = document.getElementById("password").value.trim();
+      const resultEl = document.getElementById("result");
+      const errorEl = document.getElementById("error");
+      resultEl.innerText = "";
+      errorEl.innerText = "";
+
+      if (!email || !password) {
+        errorEl.innerText = "⚠️ กรุณากรอกข้อมูลให้ครบ";
+        return;
+      }
+
+      try {
+        // ✅ ตรวจว่ามีใน adminUsers หรือไม่
+        const docSnap = await db.collection("adminUsers").doc(email).get();
+        if (!docSnap.exists) {
+          errorEl.innerText = "❌ คุณไม่มีสิทธิ์สมัครบัญชีแอดมิน";
+          return;
+        }
+
+        await auth.createUserWithEmailAndPassword(email, password);
+        resultEl.innerText = `✅ สมัครสำเร็จ! กรุณาไปที่หน้าเข้าสู่ระบบ`;
+      } catch (error) {
+        console.error("Signup error:", error);
+        errorEl.innerText = error.message || "เกิดข้อผิดพลาดในการสมัคร";
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", init);
+    window.signup = signup; // ✅ ให้เรียกใช้ได้จากปุ่ม onclick
+  </script>
+</body>
+</html>

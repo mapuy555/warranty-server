@@ -19,6 +19,7 @@
     .box { background: white; padding: 15px; border-radius: 10px; }
     .box p { margin: 6px 0; }
     button {
+       font-family: 'Prompt', sans-serif;
       width: 100%;
       margin-top: 12px;
       padding: 10px;
@@ -70,10 +71,23 @@
       try {
         const res = await fetch(`${apiBase}/api/registrations/${orderId}`);
         if (!res.ok) throw new Error();
-        const reg = await res.json();
+       const reg = await res.json();
+console.log("📦 ผลลัพธ์จาก API:", reg);
 
-        const productList = document.getElementById("productList");
-        productList.innerHTML = reg.items.map(item => `<li>• ${item.productName || item}</li>`).join("");
+const items = reg.data?.items || reg.items || [];
+const productList = document.getElementById("productList");
+productList.innerHTML = Array.isArray(items) && items.length
+  ? items.map(item => {
+      if (typeof item === "object") {
+        return `<li>• ${item.productName || "-"} (จำนวน ${item.quantity || 1})</li>`;
+      } else {
+        return `<li>• ${item}</li>`;
+      }
+    }).join("")
+  : "<li>❌ ไม่พบข้อมูลสินค้า</li>";
+
+
+
       } catch {
         document.getElementById("productList").innerHTML = "<li>❌ ไม่พบข้อมูลสินค้า</li>";
       }

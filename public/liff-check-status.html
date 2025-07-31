@@ -84,6 +84,19 @@
 
 if (data.registration) {
   html += `<i class="fas fa-check-circle text-green-500"></i> ลงทะเบียนแล้วเมื่อ: ${formatDate(data.registration.registeredAt)}<br/>`;
+  if (data.registration.items && data.registration.items.length > 0) {
+  html += `<i class="fas fa-box text-indigo-600"></i> รายการสินค้า:<br/><ul>`;
+  data.registration.items.forEach((item) => {
+  if (typeof item === "object") {
+    html += `<li>📦 ${item.productName || "-"} (จำนวน ${item.quantity || 1})</li>`;
+  } else {
+    html += `<li>📦 ${item}</li>`;
+  }
+});
+
+  html += `</ul>`;
+}
+
   html += `<i class="fas fa-hourglass-half text-yellow-600"></i> หมดประกัน: ${data.registration.warrantyUntil}<br/>`;
 } else {
   html += `<i class="fas fa-exclamation-triangle text-orange-500"></i> ยังไม่ลงทะเบียนรับประกัน<br/>`;

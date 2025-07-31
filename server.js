@@ -526,10 +526,18 @@ app.get("/api/firebase-config", (req, res) => {
 });
 // ✅ ส่งรายชื่อแอดมินจาก .env
 // ✅ ส่งรายชื่อแอดมินจาก .env
-app.get("/api/allowed-admins", (req, res) => {
-  const adminEmails = process.env.ALLOWED_ADMIN_EMAILS?.split(",") || [];
-  res.json({ admins: adminEmails });
+// ✅ API คืนอีเมลทั้งหมดจาก collection adminUsers
+app.get("/api/allowed-admins", async (req, res) => {
+  try {
+    const snapshot = await db.collection("adminUsers").get();
+    const admins = snapshot.docs.map(doc => doc.id);
+    res.json({ admins });
+  } catch (error) {
+    console.error("Error fetching adminUsers:", error);
+    res.status(500).json({ message: "เกิดข้อผิดพลาด" });
+  }
 });
+
 
 
 const multer = require("multer");
